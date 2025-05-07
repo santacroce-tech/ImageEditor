@@ -6,6 +6,9 @@ class ImageEditorViewController: UIViewController, PKCanvasViewDelegate, UIImage
     let canvasView = PKCanvasView()
     let layerManager = LayerManager()
     let layerContainerView = UIView()
+    var selectedLayer: EditorLayer?
+    var isDrawingMode = false
+    var toolPicker: PKToolPicker?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -23,6 +26,7 @@ class ImageEditorViewController: UIViewController, PKCanvasViewDelegate, UIImage
         canvasView.backgroundColor = .clear
         canvasView.isOpaque = false
         canvasView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        canvasView.isUserInteractionEnabled = false // <-- initially off
         view.addSubview(canvasView)
         view.sendSubviewToBack(canvasView)
     }
@@ -55,7 +59,7 @@ class ImageEditorViewController: UIViewController, PKCanvasViewDelegate, UIImage
         view.addSubview(toolbar)
 
         NSLayoutConstraint.activate([
-            toolbar.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
+            toolbar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
             toolbar.centerXAnchor.constraint(equalTo: view.centerXAnchor)
         ])
         
@@ -63,10 +67,54 @@ class ImageEditorViewController: UIViewController, PKCanvasViewDelegate, UIImage
         layersButton.setTitle("Layers", for: .normal)
         layersButton.addTarget(self, action: #selector(showLayerList), for: .touchUpInside)
 
-        toolbar.addArrangedSubview(imageButton)
-        toolbar.addArrangedSubview(textButton)
-        toolbar.addArrangedSubview(layersButton)
+        let cropButton = UIButton(type: .system)
+        cropButton.setTitle("Crop", for: .normal)
+        cropButton.addTarget(self, action: #selector(startCropMode), for: .touchUpInside)
 
+        let drawButton = UIButton(type: .system)
+        drawButton.setTitle("Draw", for: .normal)
+        drawButton.addTarget(self, action: #selector(toggleDrawMode), for: .touchUpInside)
+
+        toolbar.addArrangedSubview(drawButton)
+        toolbar.addArrangedSubview(layersButton)
+        toolbar.addArrangedSubview(cropButton)
+
+    }
+    @objc func toggleDrawMode(_ sender: Any? = nil) {
+        isDrawingMode.toggle()
+        canvasView.isUserInteractionEnabled = isDrawingMode
+        layerContainerView.isUserInteractionEnabled = !isDrawingMode
+
+        if isDrawingMode {
+            addFloatingDoneButton()
+
+            if let window = view.window, toolPicker == nil {
+                toolPicker = PKToolPicker()
+                toolPicker?.setVisible(true, forFirstResponder: canvasView)
+                toolPicker?.addObserver(canvasView)
+            }
+
+            toolPicker?.setVisible(true, forFirstResponder: canvasView)
+            canvasView.becomeFirstResponder()
+        } else {
+            removeFloatingDoneButton()
+            canvasView.resignFirstResponder()
+            toolPicker?.setVisible(false, forFirstResponder: canvasView)
+            captureDrawingToLayer()
+            canvasView.drawing = PKDrawing()
+        }
+    }
+
+
+    private func captureDrawingToLayer() {
+        let image = canvasView.drawing.image(from: canvasView.bounds, scale: UIScreen.main.scale)
+        let imageView = UIImageView(image: image)
+        imageView.frame = canvasView.bounds
+        imageView.isUserInteractionEnabled = true
+        addGestures(to: imageView)
+
+        let layer = EditorLayer(view: imageView, zIndex: layerManager.layers.count)
+        layerManager.addLayer(layer, to: layerContainerView)
     }
 
     @objc func showLayerList() {
@@ -167,7 +215,9 @@ class ImageEditorViewController: UIViewController, PKCanvasViewDelegate, UIImage
                 label.sizeToFit()
             }
         })
-
+        
+        selectedLayer = layerManager.layers.first { $0.view === label } // for text
+        
         present(alert, animated: true)
     }
 
@@ -227,6 +277,8 @@ class ImageEditorViewController: UIViewController, PKCanvasViewDelegate, UIImage
             cropButton.heightAnchor.constraint(equalToConstant: 40)
         ])
 
+        selectedLayer = layerManager.layers.first { $0.view === imageView } // for image
+        
         overlay.tag = 999
         overlay.accessibilityHint = "crop:\(imageView.hash)"
         view.addSubview(overlay)
@@ -253,7 +305,38 @@ class ImageEditorViewController: UIViewController, PKCanvasViewDelegate, UIImage
         imageView.frame = CGRect(origin: cropRect.origin, size: cropRect.size)
     }
 
+    @objc func startCropMode() {
+        guard let selected = selectedLayer,
+              let imageView = selected.view as? UIImageView else {
+            print("No image layer selected")
+            return
+        }
 
+        presentCropOverlay(for: imageView)
+    }
+
+    private func addFloatingDoneButton() {
+        let doneButton = UIButton(type: .system)
+        doneButton.setTitle("Done", for: .normal)
+        doneButton.setTitleColor(.white, for: .normal)
+        doneButton.backgroundColor = .black
+        doneButton.layer.cornerRadius = 10
+        doneButton.tag = 888
+        doneButton.addTarget(self, action: #selector(toggleDrawMode(_:)), for: .touchUpInside)
+        doneButton.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(doneButton)
+
+        NSLayoutConstraint.activate([
+            doneButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
+            doneButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            doneButton.widthAnchor.constraint(equalToConstant: 80),
+            doneButton.heightAnchor.constraint(equalToConstant: 40)
+        ])
+    }
+
+    private func removeFloatingDoneButton() {
+        view.viewWithTag(888)?.removeFromSuperview()
+    }
 
 }
 

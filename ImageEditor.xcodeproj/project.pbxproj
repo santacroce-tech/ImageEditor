@@ -14,6 +14,11 @@
 		D4435EB92DCABF3E004EFEAB /* ImageEditorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4435EB82DCABF3E004EFEAB /* ImageEditorTests.swift */; };
 		D4435EC32DCABF3E004EFEAB /* ImageEditorUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4435EC22DCABF3E004EFEAB /* ImageEditorUITests.swift */; };
 		D4435EC52DCABF3E004EFEAB /* ImageEditorUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4435EC42DCABF3E004EFEAB /* ImageEditorUITestsLaunchTests.swift */; };
+		D4435ED22DCABFEA004EFEAB /* ImageEditorViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4435ED12DCABFEA004EFEAB /* ImageEditorViewController.swift */; };
+		D4435ED42DCAC008004EFEAB /* EditorLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4435ED32DCAC008004EFEAB /* EditorLayer.swift */; };
+		D4435ED62DCAC01A004EFEAB /* LayerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4435ED52DCAC01A004EFEAB /* LayerManager.swift */; };
+		D4435ED92DCAC9F4004EFEAB /* LayerListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4435ED82DCAC9F4004EFEAB /* LayerListViewController.swift */; };
+		D4435EDB2DCACB82004EFEAB /* CropOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4435EDA2DCACB82004EFEAB /* CropOverlayView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -44,6 +49,12 @@
 		D4435EBE2DCABF3E004EFEAB /* ImageEditorUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ImageEditorUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D4435EC22DCABF3E004EFEAB /* ImageEditorUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageEditorUITests.swift; sourceTree = "<group>"; };
 		D4435EC42DCABF3E004EFEAB /* ImageEditorUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageEditorUITestsLaunchTests.swift; sourceTree = "<group>"; };
+		D4435ED12DCABFEA004EFEAB /* ImageEditorViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageEditorViewController.swift; sourceTree = "<group>"; };
+		D4435ED32DCAC008004EFEAB /* EditorLayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorLayer.swift; sourceTree = "<group>"; };
+		D4435ED52DCAC01A004EFEAB /* LayerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayerManager.swift; sourceTree = "<group>"; };
+		D4435ED72DCAC47E004EFEAB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		D4435ED82DCAC9F4004EFEAB /* LayerListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayerListViewController.swift; sourceTree = "<group>"; };
+		D4435EDA2DCACB82004EFEAB /* CropOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CropOverlayView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -94,8 +105,14 @@
 		D4435EA62DCABF39004EFEAB /* ImageEditor */ = {
 			isa = PBXGroup;
 			children = (
+				D4435ED72DCAC47E004EFEAB /* Info.plist */,
+				D4435ED32DCAC008004EFEAB /* EditorLayer.swift */,
+				D4435ED12DCABFEA004EFEAB /* ImageEditorViewController.swift */,
 				D4435EA72DCABF39004EFEAB /* ImageEditorApp.swift */,
 				D4435EA92DCABF39004EFEAB /* ContentView.swift */,
+				D4435ED52DCAC01A004EFEAB /* LayerManager.swift */,
+				D4435ED82DCAC9F4004EFEAB /* LayerListViewController.swift */,
+				D4435EDA2DCACB82004EFEAB /* CropOverlayView.swift */,
 				D4435EAB2DCABF3D004EFEAB /* Assets.xcassets */,
 				D4435EAD2DCABF3D004EFEAB /* Preview Content */,
 			);
@@ -257,6 +274,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D4435ED92DCAC9F4004EFEAB /* LayerListViewController.swift in Sources */,
+				D4435EDB2DCACB82004EFEAB /* CropOverlayView.swift in Sources */,
+				D4435ED42DCAC008004EFEAB /* EditorLayer.swift in Sources */,
+				D4435ED62DCAC01A004EFEAB /* LayerManager.swift in Sources */,
+				D4435ED22DCABFEA004EFEAB /* ImageEditorViewController.swift in Sources */,
 				D4435EAA2DCABF39004EFEAB /* ContentView.swift in Sources */,
 				D4435EA82DCABF39004EFEAB /* ImageEditorApp.swift in Sources */,
 			);
@@ -425,6 +447,8 @@
 				DEVELOPMENT_TEAM = FFJKC46LZP;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ImageEditor/Info.plist;
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "This app needs access to your photos to add image layers.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -454,6 +478,8 @@
 				DEVELOPMENT_TEAM = FFJKC46LZP;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ImageEditor/Info.plist;
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "This app needs access to your photos to add image layers.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

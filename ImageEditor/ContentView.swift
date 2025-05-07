@@ -6,19 +6,19 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct ContentView: View {
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
-        }
-        .padding()
+        ImageEditorContainer()
+            .edgesIgnoringSafeArea(.all)
     }
 }
 
-#Preview {
-    ContentView()
+struct ImageEditorContainer: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> ImageEditorViewController {
+        return ImageEditorViewController()
+    }
+
+    func updateUIViewController(_ uiViewController: ImageEditorViewController, context: Context) {}
 }

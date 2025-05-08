@@ -42,4 +42,7 @@ class LayerManager {
         sortLayers()
     }
 
+    func clear() {
+        layers.removeAll()
+    }
 }

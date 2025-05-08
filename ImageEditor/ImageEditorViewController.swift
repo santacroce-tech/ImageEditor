@@ -6,14 +6,16 @@ class ImageEditorViewController: UIViewController, PKCanvasViewDelegate, UIImage
     let canvasView = PKCanvasView()
     let layerManager = LayerManager()
     let layerContainerView = UIView()
+    let toolbar = UIStackView()
     var selectedLayer: EditorLayer?
     var isDrawingMode = false
     var toolPicker: PKToolPicker?
-
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .white
-
+        view.bringSubviewToFront(toolbar)
+        
         setupCanvas()
         setupLayerContainer()
         setupToolbar()
@@ -39,47 +41,124 @@ class ImageEditorViewController: UIViewController, PKCanvasViewDelegate, UIImage
     }
 
     private func setupToolbar() {
-        let toolbar = UIStackView()
         toolbar.axis = .horizontal
         toolbar.spacing = 16
         toolbar.alignment = .center
         toolbar.translatesAutoresizingMaskIntoConstraints = false
-
-        let imageButton = UIButton(type: .system)
-        imageButton.setTitle("Add Image", for: .normal)
-        imageButton.addTarget(self, action: #selector(addImageLayer), for: .touchUpInside)
-
-        let textButton = UIButton(type: .system)
-        textButton.setTitle("Add Text", for: .normal)
-        textButton.addTarget(self, action: #selector(addTextLayer), for: .touchUpInside)
-
-        toolbar.addArrangedSubview(imageButton)
-        toolbar.addArrangedSubview(textButton)
-
+        
         view.addSubview(toolbar)
 
         NSLayoutConstraint.activate([
             toolbar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
-            toolbar.centerXAnchor.constraint(equalTo: view.centerXAnchor)
+            toolbar.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            toolbar.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            toolbar.heightAnchor.constraint(equalToConstant: 50)
         ])
         
-        let layersButton = UIButton(type: .system)
-        layersButton.setTitle("Layers", for: .normal)
-        layersButton.addTarget(self, action: #selector(showLayerList), for: .touchUpInside)
-
-        let cropButton = UIButton(type: .system)
-        cropButton.setTitle("Crop", for: .normal)
-        cropButton.addTarget(self, action: #selector(startCropMode), for: .touchUpInside)
-
-        let drawButton = UIButton(type: .system)
-        drawButton.setTitle("Draw", for: .normal)
-        drawButton.addTarget(self, action: #selector(toggleDrawMode), for: .touchUpInside)
-
+        toolbar.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.9)
+        toolbar.layer.cornerRadius = 12
+        toolbar.layer.shadowColor = UIColor.black.cgColor
+        toolbar.layer.shadowOpacity = 0.2
+        toolbar.layer.shadowOffset = CGSize(width: 0, height: 2)
+        toolbar.layer.shadowRadius = 4
+        toolbar.isLayoutMarginsRelativeArrangement = true
+        toolbar.layoutMargins = UIEdgeInsets(top: 8, left: 12, bottom: 8, right: 12)
+        
+        let imageButton = makeToolbarButton(systemName: "photo", action: #selector(addImageLayer))
+        let textButton = makeToolbarButton(systemName: "textformat", action: #selector(addTextLayer))
+        let drawButton = makeToolbarButton(systemName: "pencil.tip", action: #selector(toggleDrawMode))
+        let layersButton = makeToolbarButton(systemName: "square.stack", action: #selector(showLayerList))
+        let cropButton = makeToolbarButton(systemName: "crop", action: #selector(startCropMode))
+        let flattenButton = makeToolbarButton(systemName: "rectangle.stack.fill.badge.minus", action: #selector(flattenAllLayers))
+        let saveButton = makeToolbarButton(systemName: "square.and.arrow.down", action: #selector(saveFlattenedImage))
+        
+        toolbar.addArrangedSubview(imageButton)
+        toolbar.addArrangedSubview(textButton)
         toolbar.addArrangedSubview(drawButton)
         toolbar.addArrangedSubview(layersButton)
         toolbar.addArrangedSubview(cropButton)
+        toolbar.addArrangedSubview(flattenButton)
+        toolbar.addArrangedSubview(saveButton)
+
+        
 
     }
+    
+    private func makeToolbarButton(systemName: String, action: Selector) -> UIButton {
+        let button = UIButton(type: .system)
+        let config = UIImage.SymbolConfiguration(pointSize: 20, weight: .regular)
+        button.setImage(UIImage(systemName: systemName, withConfiguration: config), for: .normal)
+        button.tintColor = .systemBlue
+        button.addTarget(self, action: action, for: .touchUpInside)
+        return button
+    }
+    
+    @objc func saveFlattenedImage() {
+        let size = view.bounds.size
+        UIGraphicsBeginImageContextWithOptions(size, false, UIScreen.main.scale)
+
+        for layer in layerManager.layers {
+            layer.view.drawHierarchy(in: layer.view.frame, afterScreenUpdates: true)
+        }
+
+        let canvasImage = canvasView.drawing.image(from: canvasView.bounds, scale: UIScreen.main.scale)
+        canvasImage.draw(in: canvasView.frame)
+
+        guard let finalImage = UIGraphicsGetImageFromCurrentImageContext() else {
+            UIGraphicsEndImageContext()
+            return
+        }
+        UIGraphicsEndImageContext()
+
+        UIImageWriteToSavedPhotosAlbum(finalImage, self, #selector(image(_:didFinishSavingWithError:contextInfo:)), nil)
+    }
+    
+    @objc private func image(_ image: UIImage, didFinishSavingWithError error: Error?, contextInfo: UnsafeRawPointer) {
+        let alert = UIAlertController(
+            title: error == nil ? "Saved!" : "Error",
+            message: error == nil ? "Image saved to Photos." : error?.localizedDescription,
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
+    }
+    
+    @objc func flattenAllLayers() {
+        let size = view.bounds.size
+        UIGraphicsBeginImageContextWithOptions(size, false, UIScreen.main.scale)
+
+        for layer in layerManager.layers {
+            layer.view.drawHierarchy(in: layer.view.frame, afterScreenUpdates: true)
+        }
+
+        let canvasImage = canvasView.drawing.image(from: canvasView.bounds, scale: UIScreen.main.scale)
+        canvasImage.draw(in: canvasView.frame)
+
+        guard let finalImage = UIGraphicsGetImageFromCurrentImageContext() else {
+            UIGraphicsEndImageContext()
+            return
+        }
+        UIGraphicsEndImageContext()
+
+        // Clear all layers
+        for layer in layerManager.layers {
+            layer.view.removeFromSuperview()
+        }
+        layerManager.clear()
+        canvasView.drawing = PKDrawing()
+
+        // Add flattened image back as one layer
+        let imageView = UIImageView(image: finalImage)
+        imageView.frame = view.bounds
+        imageView.isUserInteractionEnabled = true
+        addGestures(to: imageView)
+
+        let layer = EditorLayer(view: imageView, zIndex: 0)
+        layerManager.addLayer(layer, to: layerContainerView)
+        
+        showToast(message: "Canvas flattened into one layer")
+    }
+    
     @objc func toggleDrawMode(_ sender: Any? = nil) {
         view.bringSubviewToFront(canvasView)
         if let doneButton = view.viewWithTag(888) {
@@ -92,7 +171,7 @@ class ImageEditorViewController: UIViewController, PKCanvasViewDelegate, UIImage
         if isDrawingMode {
             addFloatingDoneButton()
 
-            if let window = view.window, toolPicker == nil {
+            if let _ = view.window, toolPicker == nil {
                 toolPicker = PKToolPicker()
                 toolPicker?.setVisible(true, forFirstResponder: canvasView)
                 toolPicker?.addObserver(canvasView)
@@ -145,7 +224,7 @@ class ImageEditorViewController: UIViewController, PKCanvasViewDelegate, UIImage
     }
     
     private func bringLayerToFront(_ layer: EditorLayer) {
-        guard let index = layerManager.layers.firstIndex(where: { $0.id == layer.id }) else { return }
+        guard layerManager.layers.contains(where: { $0.id == layer.id }) else { return }
         layerManager.bringToFront(layer.id)
     }
 
@@ -281,11 +360,31 @@ class ImageEditorViewController: UIViewController, PKCanvasViewDelegate, UIImage
             cropButton.heightAnchor.constraint(equalToConstant: 40)
         ])
 
+        let cancelButton = UIButton(type: .system)
+        cancelButton.setTitle("Cancel", for: .normal)
+        cancelButton.tintColor = .white
+        cancelButton.backgroundColor = .systemRed
+        cancelButton.layer.cornerRadius = 8
+        cancelButton.addTarget(self, action: #selector(cancelCrop), for: .touchUpInside)
+        cancelButton.translatesAutoresizingMaskIntoConstraints = false
+        overlay.addSubview(cancelButton)
+
+        NSLayoutConstraint.activate([
+            cancelButton.bottomAnchor.constraint(equalTo: overlay.bottomAnchor, constant: -40),
+            cancelButton.leadingAnchor.constraint(equalTo: overlay.leadingAnchor, constant: 20),
+            cancelButton.widthAnchor.constraint(equalToConstant: 100),
+            cancelButton.heightAnchor.constraint(equalToConstant: 40)
+        ])
+        
         selectedLayer = layerManager.layers.first { $0.view === imageView } // for image
         
         overlay.tag = 999
         overlay.accessibilityHint = "crop:\(imageView.hash)"
         view.addSubview(overlay)
+    }
+    
+    @objc func cancelCrop() {
+        view.viewWithTag(999)?.removeFromSuperview()
     }
     
     @objc func applyCrop(_ sender: UIButton) {
@@ -340,6 +439,39 @@ class ImageEditorViewController: UIViewController, PKCanvasViewDelegate, UIImage
 
     private func removeFloatingDoneButton() {
         view.viewWithTag(888)?.removeFromSuperview()
+    }
+    
+    private func showToast(message: String, duration: Double = 2.0) {
+        let toastLabel = UILabel()
+        toastLabel.text = message
+        toastLabel.font = .systemFont(ofSize: 14, weight: .medium)
+        toastLabel.textColor = .white
+        toastLabel.backgroundColor = UIColor.black.withAlphaComponent(0.8)
+        toastLabel.textAlignment = .center
+        toastLabel.numberOfLines = 0
+        toastLabel.alpha = 0
+        toastLabel.layer.cornerRadius = 10
+        toastLabel.layer.masksToBounds = true
+        toastLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        view.addSubview(toastLabel)
+
+        NSLayoutConstraint.activate([
+            toastLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            toastLabel.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -60),
+            toastLabel.widthAnchor.constraint(lessThanOrEqualToConstant: 250),
+            toastLabel.heightAnchor.constraint(greaterThanOrEqualToConstant: 40)
+        ])
+
+        UIView.animate(withDuration: 0.3, animations: {
+            toastLabel.alpha = 1.0
+        }) { _ in
+            UIView.animate(withDuration: 0.3, delay: duration, options: [], animations: {
+                toastLabel.alpha = 0.0
+            }) { _ in
+                toastLabel.removeFromSuperview()
+            }
+        }
     }
 
 }

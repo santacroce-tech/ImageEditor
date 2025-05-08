@@ -1,7 +1,7 @@
 import UIKit
 import PencilKit
 
-class ImageEditorViewController: UIViewController, PKCanvasViewDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UIGestureRecognizerDelegate {
+class ImageEditorViewController: UIViewController, PKCanvasViewDelegate, UIScrollViewDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UIGestureRecognizerDelegate {
 
     let canvasView = PKCanvasView()
     let layerManager = LayerManager()
@@ -10,17 +10,24 @@ class ImageEditorViewController: UIViewController, PKCanvasViewDelegate, UIImage
     var selectedLayer: EditorLayer?
     var isDrawingMode = false
     var toolPicker: PKToolPicker?
+    let scrollView = UIScrollView()
+    let canvasContentView = UIView() // container for canvas + layers
     
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .white
         view.bringSubviewToFront(toolbar)
         
-        setupCanvas()
+//        setupCanvas()
+        setupCanvasEnvironment()
         setupLayerContainer()
         setupToolbar()
     }
 
+    func viewForZooming(in scrollView: UIScrollView) -> UIView? {
+        return canvasContentView
+    }
+    
     private func setupCanvas() {
         canvasView.delegate = self
         canvasView.drawingPolicy = .anyInput
@@ -41,28 +48,38 @@ class ImageEditorViewController: UIViewController, PKCanvasViewDelegate, UIImage
     }
 
     private func setupToolbar() {
+        let toolbarScrollView = UIScrollView()
+        toolbarScrollView.translatesAutoresizingMaskIntoConstraints = false
+        toolbarScrollView.showsHorizontalScrollIndicator = false
+        toolbarScrollView.alwaysBounceHorizontal = true
+        view.addSubview(toolbarScrollView)
+
+        NSLayoutConstraint.activate([
+            toolbarScrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
+            toolbarScrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            toolbarScrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            toolbarScrollView.heightAnchor.constraint(equalToConstant: 60)
+        ])
+
         toolbar.axis = .horizontal
         toolbar.spacing = 16
         toolbar.alignment = .center
         toolbar.translatesAutoresizingMaskIntoConstraints = false
-        
-        view.addSubview(toolbar)
-
-        NSLayoutConstraint.activate([
-            toolbar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
-            toolbar.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            toolbar.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            toolbar.heightAnchor.constraint(equalToConstant: 50)
-        ])
-        
         toolbar.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.9)
         toolbar.layer.cornerRadius = 12
-        toolbar.layer.shadowColor = UIColor.black.cgColor
-        toolbar.layer.shadowOpacity = 0.2
-        toolbar.layer.shadowOffset = CGSize(width: 0, height: 2)
-        toolbar.layer.shadowRadius = 4
         toolbar.isLayoutMarginsRelativeArrangement = true
         toolbar.layoutMargins = UIEdgeInsets(top: 8, left: 12, bottom: 8, right: 12)
+
+        toolbarScrollView.addSubview(toolbar)
+
+        NSLayoutConstraint.activate([
+            toolbar.leadingAnchor.constraint(equalTo: toolbarScrollView.leadingAnchor),
+            toolbar.trailingAnchor.constraint(equalTo: toolbarScrollView.trailingAnchor),
+            toolbar.topAnchor.constraint(equalTo: toolbarScrollView.topAnchor),
+            toolbar.bottomAnchor.constraint(equalTo: toolbarScrollView.bottomAnchor),
+            toolbar.heightAnchor.constraint(equalTo: toolbarScrollView.heightAnchor)
+        ])
+
         
         let imageButton = makeToolbarButton(systemName: "photo", action: #selector(addImageLayer))
         let textButton = makeToolbarButton(systemName: "textformat", action: #selector(addTextLayer))
@@ -71,7 +88,13 @@ class ImageEditorViewController: UIViewController, PKCanvasViewDelegate, UIImage
         let cropButton = makeToolbarButton(systemName: "crop", action: #selector(startCropMode))
         let flattenButton = makeToolbarButton(systemName: "rectangle.stack.fill.badge.minus", action: #selector(flattenAllLayers))
         let saveButton = makeToolbarButton(systemName: "square.and.arrow.down", action: #selector(saveFlattenedImage))
-        
+        let resetButton = makeToolbarButton(systemName: "arrow.counterclockwise", action: #selector(resetZoomAndPosition))
+        let zoomInButton = makeToolbarButton(systemName: "plus.magnifyingglass", action: #selector(zoomIn))
+        let zoomOutButton = makeToolbarButton(systemName: "minus.magnifyingglass", action: #selector(zoomOut))
+
+        toolbar.addArrangedSubview(zoomInButton)
+        toolbar.addArrangedSubview(zoomOutButton)
+        toolbar.addArrangedSubview(resetButton)
         toolbar.addArrangedSubview(imageButton)
         toolbar.addArrangedSubview(textButton)
         toolbar.addArrangedSubview(drawButton)
@@ -80,9 +103,35 @@ class ImageEditorViewController: UIViewController, PKCanvasViewDelegate, UIImage
         toolbar.addArrangedSubview(flattenButton)
         toolbar.addArrangedSubview(saveButton)
 
-        
-
     }
+    
+    @objc func zoomIn() {
+        let newScale = min(scrollView.zoomScale * 1.2, scrollView.maximumZoomScale)
+        if abs(scrollView.zoomScale - newScale) > 0.01 {
+            scrollView.setZoomScale(newScale, animated: true)
+        }
+    }
+
+    @objc func zoomOut() {
+        let newScale = max(scrollView.zoomScale * 0.8, scrollView.minimumZoomScale)
+        if abs(scrollView.zoomScale - newScale) > 0.01 {
+            scrollView.setZoomScale(newScale, animated: true)
+        }
+    }
+    
+    @objc func resetZoomAndPosition() {
+        scrollView.setZoomScale(1.0, animated: true)
+
+        // Center the canvas content
+        let offsetX = (scrollView.contentSize.width - scrollView.bounds.width) / 2
+        let offsetY = (scrollView.contentSize.height - scrollView.bounds.height) / 2
+        let centeredOffset = CGPoint(x: max(offsetX, 0), y: max(offsetY, 0))
+
+        scrollView.setContentOffset(centeredOffset, animated: true)
+
+        showToast(message: "Canvas reset")
+    }
+
     
     private func makeToolbarButton(systemName: String, action: Selector) -> UIButton {
         let button = UIButton(type: .system)
@@ -158,15 +207,16 @@ class ImageEditorViewController: UIViewController, PKCanvasViewDelegate, UIImage
         
         showToast(message: "Canvas flattened into one layer")
     }
-    
     @objc func toggleDrawMode(_ sender: Any? = nil) {
         view.bringSubviewToFront(canvasView)
         if let doneButton = view.viewWithTag(888) {
-            view.bringSubviewToFront(doneButton)       // keep done button visible too
+            view.bringSubviewToFront(doneButton)
         }
+
         isDrawingMode.toggle()
         canvasView.isUserInteractionEnabled = isDrawingMode
         layerContainerView.isUserInteractionEnabled = !isDrawingMode
+        scrollView.isScrollEnabled = !isDrawingMode // ✅ Disable scrolling while drawing
 
         if isDrawingMode {
             addFloatingDoneButton()
@@ -187,18 +237,44 @@ class ImageEditorViewController: UIViewController, PKCanvasViewDelegate, UIImage
             canvasView.drawing = PKDrawing()
         }
     }
-
-
+    
     private func captureDrawingToLayer() {
-        let image = canvasView.drawing.image(from: canvasView.bounds, scale: UIScreen.main.scale)
+        let drawingBounds = canvasView.drawing.bounds.integral
+        guard !drawingBounds.isEmpty else { return }
+
+        // Generate image from drawn strokes
+        let image = canvasView.drawing.image(from: drawingBounds, scale: 1.0)
         let imageView = UIImageView(image: image)
-        imageView.frame = canvasView.bounds
+        imageView.frame = CGRect(origin: .zero, size: drawingBounds.size)
         imageView.isUserInteractionEnabled = true
         addGestures(to: imageView)
 
+        // Center the new imageView in the visible scrollView area
+        let visibleCenter = CGPoint(
+            x: scrollView.contentOffset.x + scrollView.bounds.width / 2,
+            y: scrollView.contentOffset.y + scrollView.bounds.height / 2
+        )
+
+        imageView.center = visibleCenter
+
         let layer = EditorLayer(view: imageView, zIndex: layerManager.layers.count)
         layerManager.addLayer(layer, to: layerContainerView)
+        
+        // Scroll to center the drawing
+        let targetCenter = imageView.center
+        let zoomScale = scrollView.zoomScale
+        let visibleSize = scrollView.bounds.size
+
+        let offset = CGPoint(
+            x: max(0, targetCenter.x * zoomScale - visibleSize.width / 2),
+            y: max(0, targetCenter.y * zoomScale - visibleSize.height / 2)
+        )
+
+        scrollView.setContentOffset(offset, animated: true)
+
     }
+
+
 
     @objc func showLayerList() {
         let listVC = LayerListViewController()
@@ -473,6 +549,47 @@ class ImageEditorViewController: UIViewController, PKCanvasViewDelegate, UIImage
             }
         }
     }
+    
+    private func setupCanvasEnvironment() {
+        // Setup scroll view
+        scrollView.frame = view.bounds
+        scrollView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        scrollView.minimumZoomScale = 0.5
+        scrollView.maximumZoomScale = 3.0
+        scrollView.delegate = self
+        scrollView.bounces = false
+        scrollView.showsVerticalScrollIndicator = false
+        scrollView.showsHorizontalScrollIndicator = false
+        view.addSubview(scrollView)
+
+        // Setup canvas content
+        let canvasSize = CGSize(width: 2048, height: 2048)
+        canvasContentView.frame = CGRect(origin: .zero, size: canvasSize)
+        scrollView.contentSize = canvasSize
+        scrollView.contentOffset = CGPoint(
+            x: (canvasContentView.frame.width - scrollView.frame.width) / 2,
+            y: (canvasContentView.frame.height - scrollView.frame.height) / 2
+        )
+        
+        scrollView.addSubview(canvasContentView)
+
+        // Canvas (drawing)
+        canvasView.frame = canvasContentView.bounds
+        canvasView.drawingPolicy = .anyInput
+        canvasView.isOpaque = false
+        canvasView.backgroundColor = .clear
+        canvasView.delegate = self
+        canvasView.isUserInteractionEnabled = false
+        canvasContentView.addSubview(canvasView)
+
+        // Layer container
+        layerContainerView.frame = canvasContentView.bounds
+        layerContainerView.backgroundColor = .clear
+        canvasContentView.addSubview(layerContainerView)
+
+        view.bringSubviewToFront(toolbar)
+    }
+
 
 }
 

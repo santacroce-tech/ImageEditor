@@ -28,7 +28,7 @@ class ImageEditorViewController: UIViewController, PKCanvasViewDelegate, UIImage
         canvasView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         canvasView.isUserInteractionEnabled = false // <-- initially off
         view.addSubview(canvasView)
-        view.sendSubviewToBack(canvasView)
+        view.bringSubviewToFront(canvasView)
     }
 
     private func setupLayerContainer() {
@@ -81,6 +81,10 @@ class ImageEditorViewController: UIViewController, PKCanvasViewDelegate, UIImage
 
     }
     @objc func toggleDrawMode(_ sender: Any? = nil) {
+        view.bringSubviewToFront(canvasView)
+        if let doneButton = view.viewWithTag(888) {
+            view.bringSubviewToFront(doneButton)       // keep done button visible too
+        }
         isDrawingMode.toggle()
         canvasView.isUserInteractionEnabled = isDrawingMode
         layerContainerView.isUserInteractionEnabled = !isDrawingMode

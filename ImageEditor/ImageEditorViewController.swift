@@ -115,7 +115,9 @@ class ImageEditorViewController: UIViewController, PKCanvasViewDelegate, UIScrol
         let resetButton = makeToolbarButton(systemName: "arrow.counterclockwise", action: #selector(resetZoomAndPosition))
         let zoomInButton = makeToolbarButton(systemName: "plus.magnifyingglass", action: #selector(zoomIn))
         let zoomOutButton = makeToolbarButton(systemName: "minus.magnifyingglass", action: #selector(zoomOut))
-
+        let eraserButton = makeToolbarButton(systemName: "eraser", action: #selector(enableEraserTool))
+        
+        toolbar.addArrangedSubview(eraserButton)
         toolbar.addArrangedSubview(zoomInButton)
         toolbar.addArrangedSubview(zoomOutButton)
         toolbar.addArrangedSubview(resetButton)
@@ -127,6 +129,11 @@ class ImageEditorViewController: UIViewController, PKCanvasViewDelegate, UIScrol
         toolbar.addArrangedSubview(flattenButton)
         toolbar.addArrangedSubview(saveButton)
 
+    }
+    
+    @objc func enableEraserTool() {
+        let eraser = PKEraserTool(.vector)
+        canvasView.tool = eraser
     }
     
     @objc func zoomIn() {

@@ -12,26 +12,21 @@ import SVGKit
 
 
 struct LayerCanvasView: UIViewRepresentable {
-    //@Binding var drawing: PKDrawing
-    //@State private var drawing: PKDrawing = PKDrawing()
-    //let currentCanvasId: Int // New: Identifier for this specific canvas (e.g., 1, 2, 3)
-    @Binding var activeCanvasId: Int // New: The ID of the currently active canvas from ContentView
-    @Binding var toolPickerState: ToolPickerState
-    @Binding var sharedOffset: CGPoint // = EditorModel.shared.sharedContentOffset
-    // Each LayerCanvasView now owns its private PKToolPicker instance
+   
+    @Binding var activeCanvasId: Int
+    //@Binding var toolPickerState: ToolPickerState
+    @Binding var sharedOffset: CGPoint
     @State private var localToolPicker: PKToolPicker
     var model:LayerCanvasModel
     let accessoryButton = UIBarButtonItem(image: UIImage(systemName: "signature"), style: .plain, target: nil, action: nil)
     
-  
-    
-    
-    init(model:LayerCanvasModel, activeCanvasId: Binding<Int>, toolPickerState: Binding<ToolPickerState>, sharedOffset: Binding<CGPoint>) {
+    //toolPickerState: Binding<ToolPickerState>,
+    init(model:LayerCanvasModel, activeCanvasId: Binding<Int>,  sharedOffset: Binding<CGPoint>) {
         self.model = model
         print("cpu initcpu")
        //self.currentCanvasId = currentCanvasId
         _activeCanvasId = activeCanvasId
-        _toolPickerState = toolPickerState
+        //_toolPickerState = toolPickerState
         _sharedOffset = sharedOffset
         // Initialize the local PKToolPicker here (no 'for: window' needed)
         
@@ -74,13 +69,18 @@ struct LayerCanvasView: UIViewRepresentable {
         
         //_localToolPicker = State(initialValue: PKToolPicker())
         
-        
-        let toolItems = [EditorModel.shared.animalStampWrapper.toolItem] + PKToolPicker().toolItems
-        let picker = PKToolPicker(toolItems: toolItems)
-        
-        _localToolPicker = State(initialValue: picker)
-        //self.animalStampWrapper = animalStampWrapper
-        
+        if let picker = EditorModel.shared.toolPicker {
+            _localToolPicker = State(initialValue: picker)
+        }else{
+            let toolItems = [EditorModel.shared.animalStampWrapper.toolItem] + PKToolPicker().toolItems
+            
+            let picker = PKToolPicker(toolItems: toolItems)
+            EditorModel.shared.toolPicker = picker
+            _localToolPicker = State(initialValue: picker)
+        }
+        if EditorModel.shared.mainMenu == nil {
+            EditorModel.shared.createPopupMenu()
+        }
         
     }
     
@@ -95,11 +95,11 @@ struct LayerCanvasView: UIViewRepresentable {
         canvasView.isOpaque = false
         canvasView.backgroundColor = .clear
         canvasView.delegate = context.coordinator
-        canvasView.contentSize = CGSize(width: 2000, height: 2000)
+        canvasView.contentSize = EditorModel.shared.contentSize //CGSize(width: 2000, height: 2000)
         
         if UIDevice.current.userInterfaceIdiom == .pad {
             // Su iPad, questa policy permetterà di disegnare con la Pencil e scorrere con il dito.
-            //canvasView.drawingPolicy = .pencilOnly
+            canvasView.drawingPolicy = .pencilOnly
             print("POLICY IMPOSTATA: .pencilOnly (iPad)")
         } else {
             // Su iPhone, questa policy permetterà di disegnare con il dito.
@@ -113,12 +113,11 @@ struct LayerCanvasView: UIViewRepresentable {
         /*localToolPicker.accessoryItem = UIBarButtonItem(image: UIImage(systemName: "signature"), primaryAction: UIAction(handler: {  _ in //[self]
          EditorModel.shared.isShowingAccessorySheet = true
          }))*/
-        let mainMenu = createPopupMenu()
-        let menuButton = UIBarButtonItem(image: UIImage(systemName: "command"), menu: mainMenu)
-        
-        // Assegniamo il bottone come accessoryItem del picker
-        localToolPicker.accessoryItem = menuButton
-        
+        if let mainMenu = EditorModel.shared.mainMenu {
+            let menuButton = UIBarButtonItem(image: UIImage(systemName: "command"), menu: mainMenu)
+            // Assegniamo il bottone come accessoryItem del picker
+            localToolPicker.accessoryItem = menuButton
+        }
         //var overrideUserInterfaceStyle: UIUserInterfaceStyle
         /*localToolPicker.showsDrawingPolicyControls = true
          localToolPicker.stateAutosaveName = "com.example.swiftui-pencilkit-demo.localToolPickerState"
@@ -375,7 +374,6 @@ extension LayerCanvasView.Coordinator {
 // MARK: - PencilKit Delegates
 extension LayerCanvasView.Coordinator: PKCanvasViewDelegate, PKToolPickerObserver {
     
-    
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
         // Controlliamo se questa è la tela attiva.
         // Vogliamo che solo la tela attiva "guidi" lo scorrimento di tutte le altre.
@@ -383,7 +381,9 @@ extension LayerCanvasView.Coordinator: PKCanvasViewDelegate, PKToolPickerObserve
         
         if isActive {
             // Se è la tela attiva, aggiorniamo l'offset condiviso nel nostro modello.
-            EditorModel.shared.sharedContentOffset = scrollView.contentOffset
+            Task{
+                EditorModel.shared.contentOffset = scrollView.contentOffset
+            }
         }
     }
     
@@ -440,71 +440,4 @@ extension LayerCanvasView.Coordinator: PKCanvasViewDelegate, PKToolPickerObserve
 }
 
 extension LayerCanvasView {
-    func createPopupMenu() -> UIMenu{
-        // --- Sottomenu "File" ---
-        let saveAction = UIAction(title: "Save", image: nil) { _ in
-            EditorModel.shared.saveProject()
-        }
-        let saveAsAction = UIAction(title: "Save as", image: nil) { _ in
-            EditorModel.shared.saveProjectAs = true
-        }
-        let newAction = UIAction(title: "New", image: nil) { _ in
-            //EditorModel.shared.newProject()
-        }
-        let loadAction = UIAction(title: "Open", image: nil) { _ in
-            EditorModel.shared.loadProject()
-        }
-        let recentAction = UIAction(title: "Open recent...", image: nil) { _ in
-            //EditorModel.shared.loadProject()
-        }
-        let exportAction = UIAction(title: "Export", image: nil) { _ in
-            EditorModel.shared.exportVisibleLayersAsSingleImage()
-        }
-        
-        // Creiamo il sottomenu "File" con le azioni definite sopra
-        let fileMenu = UIMenu(title: "File", children: [newAction,loadAction,recentAction, saveAction, saveAsAction,exportAction].reversed())
-        
-        // --- Sottomenu "Layers" ---
-        
-        
-        /*let newLayerAction = UIAction(title: "Add new", image: nil) { _ in
-         EditorModel.shared.addLayer()
-         }*/
-        
-        /*
-        let undoAction = UIAction(title: "Undo", image: nil) { _ in
-            
-            EditorModel.shared.undo()
-            
-        }
-        let redoAction = UIAction(title: "Redo", image: nil) { _ in
-            
-            EditorModel.shared.redo()
-            
-        }*/
-        
-        let zoomToFitAction = UIAction(title: "Zoom to fit", image: nil) { _ in
-            
-            EditorModel.shared.zoomToFit()
-            
-        }
-        
-        let editMenu = UIMenu(title: "Edit", children: [zoomToFitAction].reversed())
-        
-        // Creiamo il sottomenu "Layers"
-        //let layersMenu = UIMenu(title: "Layers", children: [newLayerAction, viewLayersAction].reversed())
-        let layersMenu = UIAction(title: "Layers", image: nil) { _ in
-            
-            EditorModel.shared.showLayerEditorDetail = true
-            
-        }
-        // --- Menu Principale e Bottone ---
-        
-        // Creiamo il menu principale che contiene i nostri due sottomenu
-        let mainMenu = UIMenu(title: "", options: .displayInline, children: [fileMenu,editMenu,layersMenu].reversed())
-        
-        
-        return mainMenu
-        // Assegniamo il bottone come accessoryItem del picker
-    }
 }

@@ -9,33 +9,53 @@ import Foundation
 import Combine
 import UIKit
 import PencilKit
+
+struct ProjectData: Codable {
+    let contentSize: CGSize
+    let contentOffset: CGPoint
+    let layers: [LayerCanvasModel]
+}
+
+
 @MainActor
 class EditorModel: NSObject,ObservableObject {
     static let shared = EditorModel()
     @Published var layers: [LayerCanvasModel] = [] // Rimuovi LayerListModel
     @Published var animalStampWrapper = AnimalStampWrapper()
-    // let undoManager = UndoManager()
     @Published var projectID = UUID()
     
-    //@Published var canUndo: Bool = false
-    //@Published var canRedo: Bool = false
-    //var activeUndoManager: UndoManager?
     private var cancellables = Set<AnyCancellable>()
-    @Published var projectName: String = "drawingProject"
+    @Published var defProjectName: String = "drawingProject"
+    @Published var projectName: String = ""
+    
     @Published var isShowingAccessorySheet: Bool = false
+    @Published var showPhotoPicker = false
+ 
     @Published var saveProjectAs: Bool = false
     @Published var showLayerEditorDetail: Bool = false
     
     @Published var activeCanvasId: Int = 1
-    @Published var sharedContentOffset: CGPoint = .zero
-    private var canvasViews: [Int: PKCanvasView?] = [:]
+    
+    @Published var contentOffset: CGPoint = .zero
+    //@Published var contentSize: CGSize = .zero
+    @Published var contentSize: CGSize = CGSize(width: 1000, height: 1000)
 
+    private var canvasViews: [Int: PKCanvasView?] = [:]
+    var recentProjects:[String] = []
+    
+    var toolPicker: PKToolPicker?
+    var mainMenu:UIMenu!
+ 
     override init() {
         super.init()
+        projectName = defProjectName
         addLayer()
-        //addLayer()
-        //addLayer()
         activeCanvasId = 1
+        self.recentProjects = getRecentProjects()
+        if self.recentProjects.count > 0 {
+            let name = self.recentProjects[0]
+            loadProject(from:name)
+        }
     }
     
     func addLayer() {
@@ -45,19 +65,7 @@ class EditorModel: NSObject,ObservableObject {
         activeCanvasId = canvasId
     }
     
-     /*
-    func undo() {
-        activeUndoManager?.undo()
-        //objectWillChange.send()
-    }
-    
-    func redo() {
-        activeUndoManager?.redo()
-        // Notifichiamo alla UI che lo stato potrebbe essere cambiato
-        //objectWillChange.send()
-    }
-      */
-   
+  
     
     func rotateLastStroke(for layerID: Int, byDegrees degrees: Double) {
         
@@ -78,17 +86,9 @@ class EditorModel: NSObject,ObservableObject {
         transform = transform.rotated(by: CGFloat(degrees) * .pi / 180.0)
         transform = transform.translatedBy(x: -center.x, y: -center.y)
 
-        // --- LA SOLUZIONE DEFINITIVA ---
-        // Invece di modificare lo stroke direttamente, diciamo al disegno
-        // di applicare la trasformazione per noi sull'array di stroke che gli passiamo.
-        // In questo caso, l'array contiene solo il nostro ultimo stroke.
-        //drawing.transform(strokes: [lastStroke], with: transform)
         drawing.transform(using:transform)
-        // Riassegnamo il disegno modificato in modo sicuro.
         layers[layerIndex].drawing = drawing
-        
-        // Non è più necessario objectWillChange.send() perché la riassegnazione
-        // di un @Published struct notificherà la vista.
+     
     }
     /*
     func rotateLastStroke(for layerID: Int, byDegrees degrees: Double) {
@@ -148,22 +148,53 @@ class EditorModel: NSObject,ObservableObject {
         return exists
     }
     
-    /// Salva l'array di layer corrente in un file JSON.
     func saveProject(name:String? = nil) {
         let newName = name ?? projectName
         
         let filename = "\(newName).json"
         let url = getDocumentsDirectory().appendingPathComponent(filename)
-        
+     
+        let thumbFilename = "\(newName).png"
+        let thumbUrl = getDocumentsDirectory().appendingPathComponent(thumbFilename)
+   
+        let projectData = ProjectData(contentSize: self.contentSize, contentOffset: self.contentOffset,layers: self.layers)
+      
         let encoder = JSONEncoder()
         do {
-            let data = try encoder.encode(self.layers)
+            let data = try encoder.encode(projectData)
             try data.write(to: url, options: [.atomic, .completeFileProtection])
             print("✅ Progetto salvato con successo in: \(url.path)")
             projectName = newName
+            
+            
+            if let image = renderLayers() , let pngData =  image.pngData() {
+                // Ora puoi salvare questo 'pngData' su file
+            
+                try pngData.write(to: thumbUrl, options: [
+                   .atomic, // Scrive su un file temporaneo e lo rinomina solo a operazione completata, per evitare corruzione.
+                   //.completeFileProtection // Cripta il file quando il dispositivo è bloccato.
+                ])
+            }
+            
         } catch {
             print("❌ Errore durante il salvataggio del progetto: \(error.localizedDescription)")
         }
+        
+        if name != nil {
+            // fix to recreate recent list quickly:(
+            self.recentProjects = getRecentProjects()
+            loadProject(from:name!)
+        }
+    }
+    
+    func newProject(){
+        canvasViews.removeAll()
+        layers.removeAll()
+        projectName = defProjectName
+        addLayer()
+        activeCanvasId = 1
+        self.projectID = UUID()
+      
     }
     
     /// Carica un progetto da un file JSON e sostituisce i layer correnti.
@@ -171,78 +202,48 @@ class EditorModel: NSObject,ObservableObject {
         let filename = "\(name).json"
         let url = getDocumentsDirectory().appendingPathComponent(filename)
         
-        // Prima di caricare, registriamo lo stato attuale per l'undo
-        let currentLayers = self.layers
-        /*activeUndoManager?.registerUndo(withTarget: self) { target in
-            target.layers = currentLayers
-        }*/
-        
         canvasViews.removeAll()
-        //EditorModel.shared.unregisterCanvasView(forLayerID: coordinator.parent.model.id)
-
+      
         let decoder = JSONDecoder()
         do {
             let data = try Data(contentsOf: url)
-            let loadedLayers = try decoder.decode([LayerCanvasModel].self, from: data)
-            self.layers = loadedLayers
+            
+            let loadedProject = try decoder.decode(ProjectData.self, from: data)
+            self.contentSize = loadedProject.contentSize
+            self.contentOffset = loadedProject.contentOffset
+             self.layers = loadedProject.layers
+           
+            //let loadedLayers = try decoder.decode([LayerCanvasModel].self, from: data)
+            //self.layers = loadedLayers
             activeCanvasId = 1
             projectName = name
             self.projectID = UUID()
-       
+            
+            
+            
             print("✅ Progetto caricato con successo.")
         } catch {
             print("❌ Errore durante il caricamento del progetto: \(error.localizedDescription)")
         }
     }
     
-    /*
-    func setActiveUndoManager(_ undoManager: UndoManager?) {
-          // Non fare nulla se è lo stesso manager di prima
-          guard activeUndoManager !== undoManager else { return }
-          
-          // Rimuoviamo gli osservatori dal vecchio manager
-          cancellables.removeAll()
-          
-          activeUndoManager = undoManager
-          
-          // Se c'è un nuovo manager attivo, ci mettiamo in ascolto delle sue notifiche
-          if let manager = activeUndoManager {
-              let notificationNames: [Notification.Name] = [
-                  .NSUndoManagerCheckpoint,
-                  .NSUndoManagerDidUndoChange,
-                  .NSUndoManagerDidRedoChange,
-                  .NSUndoManagerWillCloseUndoGroup
-              ]
-              
-              for name in notificationNames {
-                  NotificationCenter.default.publisher(for: name, object: manager)
-                      .sink { [weak self] _ in
-                          self?.updateUndoButtonState()
-                      }
-                      .store(in: &cancellables)
-              }
-          }
-          
-          // Aggiorniamo lo stato dei bottoni subito
-          updateUndoButtonState()
-      }
-    
-    private func updateUndoButtonState() {
-        DispatchQueue.main.async {
-            self.canUndo = self.activeUndoManager?.canUndo ?? false
-            self.canRedo = self.activeUndoManager?.canRedo ?? false
+    func exportToGallery()  {
+        // 4. Salva l'immagine finale nella galleria fotografica
+        if let compositeImage = renderLayers() {
+            UIImageWriteToSavedPhotosAlbum(compositeImage, self, #selector(imageSaveCompletion), nil)
+            EditorModel.shared.showPhotoPicker = true
         }
-    }*/
+    }
     
     
-    func exportVisibleLayersAsSingleImage() {
+    func renderLayers() -> UIImage? {
          
          // 1. Filtra per ottenere solo i layer visibili e con qualcosa disegnato
          let visibleLayers = self.layers.filter { $0.visible && !$0.drawing.bounds.isEmpty }
          
          guard !visibleLayers.isEmpty else {
              print("Nessun layer visibile con contenuto da esportare.")
-             return
+             return nil
          }
          
          // 2. Calcola il rettangolo totale che contiene tutti i disegni
@@ -252,7 +253,7 @@ class EditorModel: NSObject,ObservableObject {
          
          guard !totalBounds.isNull, totalBounds.width > 0, totalBounds.height > 0 else {
              print("Dimensioni del disegno non valide.")
-             return
+             return nil
          }
          
          // 3. Usa UIGraphicsImageRenderer per creare l'immagine composita
@@ -271,9 +272,8 @@ class EditorModel: NSObject,ObservableObject {
                  layerImage.draw(in: totalBounds, blendMode: .normal, alpha: layer.opacity)
              }
          }
-         
-         // 4. Salva l'immagine finale nella galleria fotografica
-         UIImageWriteToSavedPhotosAlbum(compositeImage, self, #selector(imageSaveCompletion), nil)
+         return compositeImage
+       
      }
 
      /// Questo metodo rimane invariato. Viene chiamato al termine del salvataggio.
@@ -388,4 +388,132 @@ class EditorModel: NSObject,ObservableObject {
        func unregisterCanvasView(forLayerID layerID: Int) {
            canvasViews[layerID] = nil
        }
+    
+    /*func loadRecent(){
+        self.recentProjects.removeAll()
+        self.recentProjects = getRecentProjects()
+    }
+     */
+    
+    private func getRecentProjects() -> [String] {
+        self.recentProjects.removeAll()
+     
+        // Otteniamo il percorso della nostra cartella Documents
+        guard let documentsURL = try? FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false) else {
+            print("❌ Impossibile accedere alla cartella Documents.")
+            return []
+        }
+        
+        do {
+            // 1. Otteniamo gli URL di tutti i file nella cartella
+            let fileURLs = try FileManager.default.contentsOfDirectory(at: documentsURL, includingPropertiesForKeys: [.contentModificationDateKey], options: [])
+            
+            // 2. Filtriamo per tenere solo i file .json e otteniamo la loro data di modifica
+            let jsonFiles = try fileURLs.compactMap { url -> (url: URL, modDate: Date)? in
+                // Filtra per estensione .json
+                guard url.pathExtension == "json" else {
+                    return nil
+                }
+                // Ottieni le proprietà del file, inclusa la data di modifica
+                let resources = try url.resourceValues(forKeys: [.contentModificationDateKey])
+                guard let modificationDate = resources.contentModificationDate else {
+                    return nil
+                }
+                return (url: url, modDate: modificationDate)
+            }
+            
+            // 3. Ordiniamo l'array per data, dalla più recente alla più vecchia
+            let sortedFiles = jsonFiles.sorted { $0.modDate > $1.modDate }
+            
+            // 4. Estraiamo solo i nomi dei file, rimuovendo l'estensione .json
+            var projectNames = sortedFiles.map { $0.url.deletingPathExtension().lastPathComponent }
+            
+            print("✅ Trovati progetti recenti: \(projectNames)")
+            projectNames = Array(projectNames.prefix(5))
+            return projectNames
+            
+        } catch {
+            print("❌ Errore durante la lettura dei file: \(error.localizedDescription)")
+            return []
+        }
+    }
+}
+
+
+extension EditorModel {
+     func createPopupMenu(){
+        // --- Sottomenu "File" ---
+        let saveAction = UIAction(title: "Save", image: nil) { _ in
+            EditorModel.shared.saveProject()
+        }
+        let saveAsAction = UIAction(title: "Save as", image: nil) { _ in
+            EditorModel.shared.saveProjectAs = true
+        }
+        
+        let newAction = UIAction(title: "New", image: nil) { _ in
+            EditorModel.shared.newProject()
+        }
+        let loadAction = UIAction(title: "Open", image: nil) { _ in
+            EditorModel.shared.loadProject()
+        }
+        
+        let recentActions = EditorModel.shared.recentProjects.map{ item in
+            let recentAction = UIAction(title: item, image: nil) { _ in
+                EditorModel.shared.loadProject(from: item )
+               
+            }
+            return recentAction
+        }
+         
+        let recentMenu = UIMenu(title: "Open recent", children: recentActions.reversed())
+       
+        let exportAction = UIAction(title: "Export to gallery", image: nil) { _ in
+            EditorModel.shared.exportToGallery()
+        }
+        
+        // Creiamo il sottomenu "File" con le azioni definite sopra
+        let fileMenu = UIMenu(title: "File", children: [newAction,loadAction,recentMenu, saveAction, saveAsAction,exportAction].reversed())
+        
+        // --- Sottomenu "Layers" ---
+        
+        
+        /*let newLayerAction = UIAction(title: "Add new", image: nil) { _ in
+         EditorModel.shared.addLayer()
+         }*/
+        
+        /*
+        let undoAction = UIAction(title: "Undo", image: nil) { _ in
+            
+            EditorModel.shared.undo()
+            
+        }
+        let redoAction = UIAction(title: "Redo", image: nil) { _ in
+            
+            EditorModel.shared.redo()
+            
+        }*/
+        
+        let zoomToFitAction = UIAction(title: "Zoom to fit", image: nil) { _ in
+            
+            EditorModel.shared.zoomToFit()
+            
+        }
+        
+        let editMenu = UIMenu(title: "Edit", children: [zoomToFitAction].reversed())
+        
+        // Creiamo il sottomenu "Layers"
+        //let layersMenu = UIMenu(title: "Layers", children: [newLayerAction, viewLayersAction].reversed())
+        let layersMenu = UIAction(title: "Layers", image: nil) { _ in
+            
+            EditorModel.shared.showLayerEditorDetail = true
+            
+        }
+        // --- Menu Principale e Bottone ---
+        
+        // Creiamo il menu principale che contiene i nostri due sottomenu
+        self.mainMenu = UIMenu(title: "", options: .displayInline, children: [fileMenu,editMenu,layersMenu].reversed())
+        
+       
+        // Assegniamo il bottone come accessoryItem del picker
+    }
 }

@@ -304,21 +304,21 @@ extension LayerCanvasView.Coordinator {
         
         print("Uso: SVG=\(svgName), Colore=\(color.description), Spessore=\(width)")
         
-        if let newStroke = SVGStrokeConverter.createStroke(fromSVGNamed: svgName, at: location, color: color, width: width, scale: scale) {
+        /*if let newStroke = SVGStrokeConverter.createStroke(fromSVGNamed: svgName, at: location, color: color, width: width, scale: scale) {
             
             let drawing = PKDrawing(strokes: [newStroke])
             let newDrawing = canvasView.drawing.appending(drawing)
             setNewDrawingUndoable(newDrawing,to:canvasView)
         }else {
             print("wtf")
-        }
+        }*/
         
-        /* let newStrokes = SVGStrokeConverter.createStrokes(fromSVGNamed: svgName, at: location, color: color, width: width, scale: scale)
+         let newStrokes = SVGStrokeConverter.createStrokes2(fromSVGNamed: svgName, at: location, color: color, width: width, scale: scale)
          
          let drawing = PKDrawing(strokes: newStrokes)
          let newDrawing = canvasView.drawing.appending(drawing)
          setNewDrawingUndoable(newDrawing,to:canvasView)
-         */
+        
         //enumerateFonts()
         
         /*if let imageView = EditorModel.shared.animalStampWrapper.stampImageView(for: sender.location(in: canvasView), angleInRadians: sender.angleInRadians) {

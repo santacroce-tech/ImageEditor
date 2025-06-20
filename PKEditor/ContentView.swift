@@ -91,7 +91,34 @@ struct ContentView: View {
                 Button("Cancel".localize,role:.cancel){
                 }
             }
-            .photosPicker(isPresented: $model.showPhotoPicker,selection:$selectedPhoto)
+            
+            .onChange(of: model.showPhotoPicker) { oldState, newState in
+                var photosURL = URL(string: "photos-redirect://")
+                if let url = photosURL {
+                                // Controlliamo se l'app può aprire questo tipo di URL
+                                if UIApplication.shared.canOpenURL(url) {
+                                    // Apriamo l'URL, che lancerà l'app Foto
+                                    UIApplication.shared.open(url)
+                                }
+                            }
+                model.showPhotoPicker = false
+            }.fileImporter(
+                isPresented: $model.showDocPicker,
+                allowedContentTypes: [.json]
+            ) { result in
+                switch result {
+                case .success(let url):
+                    DispatchQueue.main.async{
+                        guard url.startAccessingSecurityScopedResource() else { // Notice this line right here
+                            return
+                        }
+                        model.loadProject(from: url)
+                    }
+                case .failure(let error):
+                    print(error.localizedDescription)
+                }
+            }
+            //.photosPicker(isPresented: //$model.showPhotoPicker,selection:$selectedPhoto)
         
         }
         

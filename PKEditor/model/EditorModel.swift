@@ -30,7 +30,8 @@ class EditorModel: NSObject,ObservableObject {
     
     @Published var isShowingAccessorySheet: Bool = false
     @Published var showPhotoPicker = false
- 
+    @Published var showDocPicker = false
+    
     @Published var saveProjectAs: Bool = false
     @Published var showLayerEditorDetail: Bool = false
     
@@ -39,13 +40,13 @@ class EditorModel: NSObject,ObservableObject {
     @Published var contentOffset: CGPoint = .zero
     //@Published var contentSize: CGSize = .zero
     @Published var contentSize: CGSize = CGSize(width: 1000, height: 1000)
-
+    
     private var canvasViews: [Int: PKCanvasView?] = [:]
     var recentProjects:[String] = []
     
     var toolPicker: PKToolPicker?
     var mainMenu:UIMenu!
- 
+    
     override init() {
         super.init()
         projectName = defProjectName
@@ -54,7 +55,7 @@ class EditorModel: NSObject,ObservableObject {
         self.recentProjects = getRecentProjects()
         if self.recentProjects.count > 0 {
             let name = self.recentProjects[0]
-            loadProject(from:name)
+            loadProject(name)
         }
     }
     
@@ -65,13 +66,13 @@ class EditorModel: NSObject,ObservableObject {
         activeCanvasId = canvasId
     }
     
-  
+    
     
     func rotateLastStroke(for layerID: Int, byDegrees degrees: Double) {
         
         guard let layerIndex = layers.firstIndex(where: { $0.id == layerID }) else { return }
         var drawing = layers[layerIndex].drawing
-
+        
         // Questa volta prendiamo solo il riferimento all'ultimo stroke
         guard let lastStroke = drawing.strokes.last else {
             print("Nessuno stroke da ruotare.")
@@ -80,57 +81,57 @@ class EditorModel: NSObject,ObservableObject {
         
         let lastStrokeBounds = lastStroke.renderBounds
         let center = CGPoint(x: lastStrokeBounds.midX, y: lastStrokeBounds.midY)
-
+        
         var transform = CGAffineTransform.identity
         transform = transform.translatedBy(x: center.x, y: center.y)
         transform = transform.rotated(by: CGFloat(degrees) * .pi / 180.0)
         transform = transform.translatedBy(x: -center.x, y: -center.y)
-
+        
         drawing.transform(using:transform)
         layers[layerIndex].drawing = drawing
-     
+        
     }
     /*
-    func rotateLastStroke(for layerID: Int, byDegrees degrees: Double) {
-        
-        guard let layerIndex = layers.firstIndex(where: { $0.id == layerID }) else { return }
-        var drawing = layers[layerIndex].drawing
-        
-        guard let lastStrokeIndex = drawing.strokes.indices.last else {
-            print("Nessuno stroke da ruotare.")
-            return
-        }
-        
-        let lastStrokeBounds = drawing.strokes[lastStrokeIndex].renderBounds
-        let center = CGPoint(x: lastStrokeBounds.midX, y: lastStrokeBounds.midY)
-        
-        // --- SEZIONE CORRETTA PER LA TRASFORMAZIONE ---
-        
-        // 1. Inizia con una trasformazione "identità" (cioè nessuna trasformazione).
-        var transform = CGAffineTransform.identity
-        
-        // 2. Applica una traslazione per portare il centro all'origine (0,0).
-        transform = transform.translatedBy(x: center.x, y: center.y)
-        
-        // 3. Applica la rotazione.
-        let radians = CGFloat(degrees) * .pi / 180.0
-        transform = transform.rotated(by: radians)
-        
-        // 4. Applica la traslazione inversa per riportare il centro alla sua posizione originale.
-        transform = transform.translatedBy(x: -center.x, y: -center.y)
-        
-        // ----------------------------------------------
-        
-        // Applica la trasformazione finale all'ultimo stroke
-        //drawing.strokes[lastStrokeIndex].transform(using: transform)
-        DispatchQueue.main.async {
-            drawing.strokes[lastStrokeIndex].transform = transform
-            
-            self.objectWillChange.send()
-            self.layers[layerIndex].drawing = drawing
-        }
-        
-    }
+     func rotateLastStroke(for layerID: Int, byDegrees degrees: Double) {
+     
+     guard let layerIndex = layers.firstIndex(where: { $0.id == layerID }) else { return }
+     var drawing = layers[layerIndex].drawing
+     
+     guard let lastStrokeIndex = drawing.strokes.indices.last else {
+     print("Nessuno stroke da ruotare.")
+     return
+     }
+     
+     let lastStrokeBounds = drawing.strokes[lastStrokeIndex].renderBounds
+     let center = CGPoint(x: lastStrokeBounds.midX, y: lastStrokeBounds.midY)
+     
+     // --- SEZIONE CORRETTA PER LA TRASFORMAZIONE ---
+     
+     // 1. Inizia con una trasformazione "identità" (cioè nessuna trasformazione).
+     var transform = CGAffineTransform.identity
+     
+     // 2. Applica una traslazione per portare il centro all'origine (0,0).
+     transform = transform.translatedBy(x: center.x, y: center.y)
+     
+     // 3. Applica la rotazione.
+     let radians = CGFloat(degrees) * .pi / 180.0
+     transform = transform.rotated(by: radians)
+     
+     // 4. Applica la traslazione inversa per riportare il centro alla sua posizione originale.
+     transform = transform.translatedBy(x: -center.x, y: -center.y)
+     
+     // ----------------------------------------------
+     
+     // Applica la trasformazione finale all'ultimo stroke
+     //drawing.strokes[lastStrokeIndex].transform(using: transform)
+     DispatchQueue.main.async {
+     drawing.strokes[lastStrokeIndex].transform = transform
+     
+     self.objectWillChange.send()
+     self.layers[layerIndex].drawing = drawing
+     }
+     
+     }
      */
     
     
@@ -153,12 +154,12 @@ class EditorModel: NSObject,ObservableObject {
         
         let filename = "\(newName).json"
         let url = getDocumentsDirectory().appendingPathComponent(filename)
-     
+        
         let thumbFilename = "\(newName).png"
         let thumbUrl = getDocumentsDirectory().appendingPathComponent(thumbFilename)
-   
+        
         let projectData = ProjectData(contentSize: self.contentSize, contentOffset: self.contentOffset,layers: self.layers)
-      
+        
         let encoder = JSONEncoder()
         do {
             let data = try encoder.encode(projectData)
@@ -169,10 +170,10 @@ class EditorModel: NSObject,ObservableObject {
             
             if let image = renderLayers() , let pngData =  image.pngData() {
                 // Ora puoi salvare questo 'pngData' su file
-            
+                
                 try pngData.write(to: thumbUrl, options: [
-                   .atomic, // Scrive su un file temporaneo e lo rinomina solo a operazione completata, per evitare corruzione.
-                   //.completeFileProtection // Cripta il file quando il dispositivo è bloccato.
+                    .atomic, // Scrive su un file temporaneo e lo rinomina solo a operazione completata, per evitare corruzione.
+                    //.completeFileProtection // Cripta il file quando il dispositivo è bloccato.
                 ])
             }
             
@@ -181,9 +182,8 @@ class EditorModel: NSObject,ObservableObject {
         }
         
         if name != nil {
-            // fix to recreate recent list quickly:(
             self.recentProjects = getRecentProjects()
-            loadProject(from:name!)
+            createPopupMenu()
         }
     }
     
@@ -194,14 +194,21 @@ class EditorModel: NSObject,ObservableObject {
         addLayer()
         activeCanvasId = 1
         self.projectID = UUID()
-      
+        
     }
     
     /// Carica un progetto da un file JSON e sostituisce i layer correnti.
-    func loadProject(from name: String = "drawingProject") {
+    func loadProject(_ name: String = "drawingProject") {
         let filename = "\(name).json"
         let url = getDocumentsDirectory().appendingPathComponent(filename)
+        loadProject(from: url)
         
+    }
+    
+    func loadProject(from url: URL) {
+        //let filename = "\(name).json"
+        //let url = getDocumentsDirectory().appendingPathComponent(filename)
+        let name = url.deletingPathExtension().lastPathComponent
         canvasViews.removeAll()
       
         let decoder = JSONDecoder()
@@ -211,7 +218,7 @@ class EditorModel: NSObject,ObservableObject {
             let loadedProject = try decoder.decode(ProjectData.self, from: data)
             self.contentSize = loadedProject.contentSize
             self.contentOffset = loadedProject.contentOffset
-             self.layers = loadedProject.layers
+            self.layers = loadedProject.layers
            
             //let loadedLayers = try decoder.decode([LayerCanvasModel].self, from: data)
             //self.layers = loadedLayers
@@ -446,20 +453,21 @@ extension EditorModel {
         let saveAction = UIAction(title: "Save", image: nil) { _ in
             EditorModel.shared.saveProject()
         }
-        let saveAsAction = UIAction(title: "Save as", image: nil) { _ in
+        let saveAsAction = UIAction(title: "Save as...", image: nil) { _ in
             EditorModel.shared.saveProjectAs = true
         }
         
         let newAction = UIAction(title: "New", image: nil) { _ in
             EditorModel.shared.newProject()
         }
-        let loadAction = UIAction(title: "Open", image: nil) { _ in
-            EditorModel.shared.loadProject()
+        let loadAction = UIAction(title: "Open...", image: nil) { _ in
+            //EditorModel.shared.loadProject()
+            self.showDocPicker = true
         }
         
         let recentActions = EditorModel.shared.recentProjects.map{ item in
             let recentAction = UIAction(title: item, image: nil) { _ in
-                EditorModel.shared.loadProject(from: item )
+                EditorModel.shared.loadProject(item )
                
             }
             return recentAction

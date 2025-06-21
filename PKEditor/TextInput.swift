@@ -105,9 +105,21 @@ struct TextInput: View {
                     } label: {
                         Image(systemName: "textformat.size")
                     }
+                    Button {
+                        print("...")
+                    } label: {
+                        Image(systemName: "text.alignleft")
+                    }
                     
                     
                     Spacer()
+                    Button {
+                        isTextFieldFocused = false
+                    
+                    } label: {
+                        Image(systemName: "xmark")
+                    }
+                    
                     Button {
                         isTextFieldFocused = false
                         if inputText.count > 0 {

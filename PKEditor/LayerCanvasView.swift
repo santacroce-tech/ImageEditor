@@ -72,7 +72,9 @@ struct LayerCanvasView: UIViewRepresentable {
         if let picker = EditorModel.shared.toolPicker {
             _localToolPicker = State(initialValue: picker)
         }else{
-            let toolItems = [EditorModel.shared.shapeStampWrapper.toolItem] + PKToolPicker().toolItems
+            let toolItems = [EditorModel.shared.shapeStampWrapper.toolItem] +
+            [EditorModel.shared.textStampWrapper.toolItem] +
+            PKToolPicker().toolItems
             
             let picker = PKToolPicker(toolItems: toolItems)
             EditorModel.shared.toolPicker = picker
@@ -295,22 +297,37 @@ extension LayerCanvasView.Coordinator {
         
         let stampWrapper = EditorModel.shared.shapeStampWrapper
         
-        let selectedAttribute = stampWrapper.attributeViewController.attributeModel.selectedAttribute
+        let stampToolIdentifier = EditorModel.shared.shapeStampWrapper.toolItem.identifier
+      
+        let textToolIdentifier = EditorModel.shared.textStampWrapper.toolItem.identifier
+      
+        // 2. Otteniamo l'identificatore dello strumento attualmente selezionato nel picker.
+        let selectedIdentifier = EditorModel.shared.toolPicker!.selectedToolItemIdentifier
         
-        let svgName = "\(selectedAttribute.name).svg"
-        let color = stampWrapper.toolItem.color
-        let width = stampWrapper.toolItem.width
-        let scale = stampWrapper.toolItem.width - 2.0
+        // 3. Confrontiamo i due identificatori.
+        let isTextToolSelected = (selectedIdentifier == textToolIdentifier)
+        if isTextToolSelected {
+            EditorModel.shared.showTextInput.toggle()
+        }
         
-        print("Uso: SVG=\(svgName), Colore=\(color.description), Spessore=\(width)")
-       
-        
-        let newStrokes = SVGStrokeConverter.createStrokes(fromSVGNamed: svgName, at: location, color: color, width: width, scale: scale)
-
-        let drawing = PKDrawing(strokes: newStrokes)
-        let newDrawing = canvasView.drawing.appending(drawing)
-        EditorModel.shared.setNewDrawingUndoable(newDrawing,to:canvasView)
-
+        let isStampToolSelected = (selectedIdentifier == stampToolIdentifier)
+        if isStampToolSelected {
+            let selectedAttribute = stampWrapper.attributeViewController.attributeModel.selectedAttribute
+            
+            let svgName = "\(selectedAttribute.name).svg"
+            let color = stampWrapper.toolItem.color
+            let width = stampWrapper.toolItem.width
+            let scale = stampWrapper.toolItem.width - 2.0
+            
+            print("Uso: SVG=\(svgName), Colore=\(color.description), Spessore=\(width)")
+            
+            
+            let newStrokes = SVGStrokeConverter.createStrokes(fromSVGNamed: svgName, at: location, color: color, width: width, scale: scale)
+            
+            let drawing = PKDrawing(strokes: newStrokes)
+            let newDrawing = canvasView.drawing.appending(drawing)
+            EditorModel.shared.setNewDrawingUndoable(newDrawing,to:canvasView)
+        }
   
         /*if let imageView = EditorModel.shared.animalStampWrapper.stampImageView(for: sender.location(in: canvasView), angleInRadians: sender.angleInRadians) {
          // Aggiungiamo l'immagine direttamente come subview della canvas
@@ -411,16 +428,23 @@ extension LayerCanvasView.Coordinator: PKCanvasViewDelegate, PKToolPickerObserve
         // 1. Otteniamo l'identificatore del nostro strumento Timbro dal modello.
         //    Questo è l'identificatore "corretto" che stiamo cercando.
         let stampToolIdentifier = EditorModel.shared.shapeStampWrapper.toolItem.identifier
-        
+        let textToolIdentifier = EditorModel.shared.textStampWrapper.toolItem.identifier
+      
         // 2. Otteniamo l'identificatore dello strumento attualmente selezionato nel picker.
         let selectedIdentifier = toolPicker.selectedToolItemIdentifier
         
         // 3. Confrontiamo i due identificatori.
         let isStampToolSelected = (selectedIdentifier == stampToolIdentifier)
-        
+        let isTextToolSelected = (selectedIdentifier == textToolIdentifier)
+     
         // 4. Abilitiamo o disabilitiamo il nostro gesture recognizer di conseguenza.
-        stampGestureRecognizer?.isEnabled = isStampToolSelected
-        
+        stampGestureRecognizer?.isEnabled = isStampToolSelected || isTextToolSelected
+        DispatchQueue.main.async{
+            if isTextToolSelected {
+                EditorModel.shared.showTextInput = true
+            }
+            
+        }
         // Aggiungiamo un print di debug per vedere cosa sta succedendo
         if isStampToolSelected {
             print("Strumento Timbro ATTIVATO. HandleTap ora funzionerà.")

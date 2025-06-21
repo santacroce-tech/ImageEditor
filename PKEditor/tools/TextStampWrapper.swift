@@ -12,46 +12,47 @@ import PencilKit
 ///
 /// This class defines additional attributes for the animal stamp tool because
 /// `PKToolPickerCustomItem` disallows subclassing.
-@MainActor class ShapeStampWrapper:ObservableObject {
+@MainActor class TextStampWrapper:ObservableObject {
     let toolItem: PKToolPickerCustomItem
-    let attributeViewController: AttributeViewController
+    //let attributeViewController: AttributeViewController
 
     init() {
-        let attributeVC = AttributeViewController(attributeModel: Model())
-        self.attributeViewController = attributeVC
+        //let attributeVC = AttributeViewController(attributeModel: Model())
+        //self.attributeViewController = attributeVC
         
-        let identifier = "com.example.apple-samplecode.shape-stamp"
-        let name = NSLocalizedString("Shape Stamp", comment: "Name of the shape stamp tool")
+        let identifier = "com.example.apple-samplecode.text-stamp"
+        let name = NSLocalizedString("Shape Stamp", comment: "Text stamp tool")
         var config = PKToolPickerCustomItem.Configuration(identifier: identifier, name: name)
         
         // The color blue from the tool picker.
         config.defaultColor = UIColor(red: 21 / 255, green: 126 / 255, blue: 251 / 255, alpha: 1)
         config.allowsColorSelection = true
         
-        config.widthVariants = [3: Self.makeWidthVariantImage(for: 0),
+        /*config.widthVariants = [3: Self.makeWidthVariantImage(for: 0),
                                 4: Self.makeWidthVariantImage(for: 1),
                                 5: Self.makeWidthVariantImage(for: 2),
                                 6: Self.makeWidthVariantImage(for: 3),
                                 7: Self.makeWidthVariantImage(for: 4)]
         config.defaultWidth = config.widthVariants.first?.key ?? 0.0
-        
+         */
         config.imageProvider = { item in
             return ImageProvider.shared.drawImage(color: item.color,
                                                   width: item.width,
-                                                  attributeImage: attributeVC.attributeModel.selectedAttribute.image)
+                                                  attributeImage: UIImage(named:"fontTool")!)
         }
-        config.viewControllerProvider = { item in
+        
+        /*config.viewControllerProvider = { item in
             attributeVC.attributeModel.color = item.color
             attributeVC.reload()
             return attributeVC
-        }
+        }*/
         
         toolItem = PKToolPickerCustomItem(configuration: config)
         
-        attributeViewController.attributeModel.selectedAttributeDidChange = { [weak self] _ in
+        /*attributeViewController.attributeModel.selectedAttributeDidChange = { [weak self] _ in
             self?.toolItem.reloadImage()
             self?.attributeViewController.reload()
-        }
+        }*/
     }
     
     static private func makeWidthVariantImage(for index: Int) -> UIImage {
@@ -70,7 +71,7 @@ import PencilKit
     
     /// The stamp image for the selected custom tool item.
     func stampImageView(for location: CGPoint, angleInRadians: CGFloat) -> UIImageView? {
-        guard let selectedImage = attributeViewController.attributeModel.selectedImage else { return nil }
+        /*guard let selectedImage = attributeViewController.attributeModel.selectedImage else { return nil }
         let tintedImage = selectedImage.withTintColor(toolItem.color, renderingMode: .alwaysOriginal)
         
         let width = toolItem.width
@@ -82,10 +83,12 @@ import PencilKit
         imageView.image = tintedImage
         
         return imageView
+         */
+        return nil
     }
 }
 
-fileprivate extension ShapeStampWrapper {
+fileprivate extension TextStampWrapper {
     
     /// A model for the attribute view controller for the animal stamp.
     class Model: AttributeViewController.Model {

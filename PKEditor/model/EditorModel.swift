@@ -22,6 +22,7 @@ class EditorModel: NSObject,ObservableObject {
     static let shared = EditorModel()
     @Published var layers: [LayerCanvasModel] = [] 
     @Published var shapeStampWrapper = ShapeStampWrapper()
+    @Published var textStampWrapper = TextStampWrapper()
     @Published var projectID = UUID()
     
     private var cancellables = Set<AnyCancellable>()
@@ -503,13 +504,13 @@ extension EditorModel {
             
             EditorModel.shared.redo()
             
-        }*/
+        }
         
          let textAction = UIAction(title: "Add text...", image: nil) { _ in
              
              EditorModel.shared.showTextInput = true
              
-         }
+         }*/
          
         let zoomToFitAction = UIAction(title: "Zoom to fit", image: nil) { _ in
             
@@ -517,7 +518,7 @@ extension EditorModel {
             
         }
         
-        let editMenu = UIMenu(title: "Edit", children: [zoomToFitAction,textAction].reversed())
+        let editMenu = UIMenu(title: "Edit", children: [zoomToFitAction].reversed())
         
         // Creiamo il sottomenu "Layers"
         //let layersMenu = UIMenu(title: "Layers", children: [newLayerAction, viewLayersAction].reversed())
@@ -547,8 +548,8 @@ extension EditorModel {
         //let font = UIFont.systemFont(ofSize: 80, weight: .bold)
         let font = UIFont(name: "Impact", size: 80)!
         //let font = UIFont(name: "Verdana", size: 19)!
-     
-        let color = UIColor.darkGray
+        
+        let color = textStampWrapper.toolItem.color
         let width: CGFloat = 3.0
         let scale: CGFloat = 1.0
         

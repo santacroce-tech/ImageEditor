@@ -72,7 +72,7 @@ struct LayerCanvasView: UIViewRepresentable {
         if let picker = EditorModel.shared.toolPicker {
             _localToolPicker = State(initialValue: picker)
         }else{
-            let toolItems = [EditorModel.shared.animalStampWrapper.toolItem] + PKToolPicker().toolItems
+            let toolItems = [EditorModel.shared.shapeStampWrapper.toolItem] + PKToolPicker().toolItems
             
             let picker = PKToolPicker(toolItems: toolItems)
             EditorModel.shared.toolPicker = picker
@@ -96,7 +96,7 @@ struct LayerCanvasView: UIViewRepresentable {
         canvasView.backgroundColor = .clear
         canvasView.delegate = context.coordinator
         canvasView.contentSize = EditorModel.shared.contentSize //CGSize(width: 2000, height: 2000)
-        
+        model.canvas = canvasView
         if UIDevice.current.userInterfaceIdiom == .pad {
             // Su iPad, questa policy permetterà di disegnare con la Pencil e scorrere con il dito.
             canvasView.drawingPolicy = .pencilOnly
@@ -261,7 +261,7 @@ struct LayerCanvasView: UIViewRepresentable {
             case .changed:
                 hoverPreviewView?.removeFromSuperview()
                 hoverPreviewView = nil
-                if let imageView = EditorModel.shared.animalStampWrapper.stampImageView(for: point, angleInRadians: angleInRadians) {
+                if let imageView = EditorModel.shared.shapeStampWrapper.stampImageView(for: point, angleInRadians: angleInRadians) {
                     imageView.alpha = 0.5
                     canvasView.addSubview(imageView)
                     hoverPreviewView = imageView
@@ -277,9 +277,9 @@ struct LayerCanvasView: UIViewRepresentable {
         
         
     }
-    
-    
 }
+
+
 extension LayerCanvasView.Coordinator {
     func setUpGestureRecognizers(on view: UIView) {
         stampGestureRecognizer = StampGestureRecognizer(target: self, action: #selector(handleTap(_:)))
@@ -293,7 +293,7 @@ extension LayerCanvasView.Coordinator {
         
         let location = sender.location(in: canvasView)
         
-        let stampWrapper = EditorModel.shared.animalStampWrapper
+        let stampWrapper = EditorModel.shared.shapeStampWrapper
         
         let selectedAttribute = stampWrapper.attributeViewController.attributeModel.selectedAttribute
         
@@ -303,41 +303,33 @@ extension LayerCanvasView.Coordinator {
         let scale = stampWrapper.toolItem.width - 2.0
         
         print("Uso: SVG=\(svgName), Colore=\(color.description), Spessore=\(width)")
+       
         
-        /*if let newStroke = SVGStrokeConverter.createStroke(fromSVGNamed: svgName, at: location, color: color, width: width, scale: scale) {
-            
-            let drawing = PKDrawing(strokes: [newStroke])
-            let newDrawing = canvasView.drawing.appending(drawing)
-            setNewDrawingUndoable(newDrawing,to:canvasView)
-        }else {
-            print("wtf")
-        }*/
-        
-         let newStrokes = SVGStrokeConverter.createStrokes2(fromSVGNamed: svgName, at: location, color: color, width: width, scale: scale)
-         
-         let drawing = PKDrawing(strokes: newStrokes)
-         let newDrawing = canvasView.drawing.appending(drawing)
-         setNewDrawingUndoable(newDrawing,to:canvasView)
-        
-        //enumerateFonts()
-        
+        let newStrokes = SVGStrokeConverter.createStrokes(fromSVGNamed: svgName, at: location, color: color, width: width, scale: scale)
+
+        let drawing = PKDrawing(strokes: newStrokes)
+        let newDrawing = canvasView.drawing.appending(drawing)
+        EditorModel.shared.setNewDrawingUndoable(newDrawing,to:canvasView)
+
+  
         /*if let imageView = EditorModel.shared.animalStampWrapper.stampImageView(for: sender.location(in: canvasView), angleInRadians: sender.angleInRadians) {
          // Aggiungiamo l'immagine direttamente come subview della canvas
          canvasView.addSubview(imageView)
          //insertImageViewUndoable(newDrawing,to:canvasView)
          }*/
-        /*
+        
          //UIFont.systemFont(ofSize: 60)
          
-         //let font = UIFont(name: "SFProText-Regular", size: 19)!
-         let font = UIFont(name: "Verdana", size: 19)!
+        //let font = UIFont(name: "Helvetica-Light", size: 19)!
+        //let font = UIFont(name: "Impact", size: 19)!
+        //let font = UIFont(name: "Verdana", size: 19)!
+         /*
+         let newFontStrokes = FontStrokeConverter.createStrokes(fromText: "Hello TEXT!",font:font, at: location, color: color, width: 3, scale:scale)
          
-         let newStrokes = FontStrokeConverter.createStrokes(fromText: "ABCDEFGHI",font:font, at: location, color: color, width: width, scale:scale)
-         
-         let drawing = PKDrawing(strokes: newStrokes)
-         let newDrawing = canvasView.drawing.appending(drawing)
-         setNewDrawingUndoable(newDrawing,to:canvasView)
-         */
+         let drawing1 = PKDrawing(strokes: newFontStrokes)
+         let newDrawing1 = canvasView.drawing.appending(drawing1)
+         setNewDrawingUndoable(newDrawing1,to:canvasView)
+        */
     }
     
     private func insertImageViewUndoable(_ imageView: UIImageView) {
@@ -347,6 +339,7 @@ extension LayerCanvasView.Coordinator {
         //canvasView.addSubview(imageView)
     }
     
+    /*
     func setNewDrawingUndoable(_ newDrawing: PKDrawing, to canvasView: PKCanvasView) {
         let oldDrawing = canvasView.drawing
         if let undoManager = canvasView.undoManager {
@@ -356,6 +349,7 @@ extension LayerCanvasView.Coordinator {
         }
         canvasView.drawing = newDrawing
     }
+     */
     
     func enumerateFonts(){
         
@@ -416,7 +410,7 @@ extension LayerCanvasView.Coordinator: PKCanvasViewDelegate, PKToolPickerObserve
         
         // 1. Otteniamo l'identificatore del nostro strumento Timbro dal modello.
         //    Questo è l'identificatore "corretto" che stiamo cercando.
-        let stampToolIdentifier = EditorModel.shared.animalStampWrapper.toolItem.identifier
+        let stampToolIdentifier = EditorModel.shared.shapeStampWrapper.toolItem.identifier
         
         // 2. Otteniamo l'identificatore dello strumento attualmente selezionato nel picker.
         let selectedIdentifier = toolPicker.selectedToolItemIdentifier

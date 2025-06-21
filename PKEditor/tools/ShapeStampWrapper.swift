@@ -21,7 +21,7 @@ import PencilKit
         self.attributeViewController = attributeVC
         
         let identifier = "com.example.apple-samplecode.animal-stamp"
-        let name = NSLocalizedString("Animal Stamp", comment: "Name of the animal stamp tool")
+        let name = NSLocalizedString("Animal Stamp", comment: "Name of the shape stamp tool")
         var config = PKToolPickerCustomItem.Configuration(identifier: identifier, name: name)
         
         // The color blue from the tool picker.

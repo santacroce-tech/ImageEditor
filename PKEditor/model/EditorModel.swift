@@ -20,8 +20,8 @@ struct ProjectData: Codable {
 @MainActor
 class EditorModel: NSObject,ObservableObject {
     static let shared = EditorModel()
-    @Published var layers: [LayerCanvasModel] = [] // Rimuovi LayerListModel
-    @Published var animalStampWrapper = AnimalStampWrapper()
+    @Published var layers: [LayerCanvasModel] = [] 
+    @Published var shapeStampWrapper = ShapeStampWrapper()
     @Published var projectID = UUID()
     
     private var cancellables = Set<AnyCancellable>()
@@ -31,7 +31,7 @@ class EditorModel: NSObject,ObservableObject {
     @Published var isShowingAccessorySheet: Bool = false
     @Published var showPhotoPicker = false
     @Published var showDocPicker = false
-    
+    @Published var showTextInput = false
     @Published var saveProjectAs: Bool = false
     @Published var showLayerEditorDetail: Bool = false
     
@@ -475,12 +475,16 @@ extension EditorModel {
          
         let recentMenu = UIMenu(title: "Open recent", children: recentActions.reversed())
        
-        let exportAction = UIAction(title: "Export to gallery", image: nil) { _ in
+        let saveToGallery = UIAction(title: "Save to gallery", image: nil) { _ in
             EditorModel.shared.exportToGallery()
         }
+         
+         let exportAction = UIAction(title: "Export...", image: nil) { _ in
+             EditorModel.shared.exportToGallery()
+         }
         
         // Creiamo il sottomenu "File" con le azioni definite sopra
-        let fileMenu = UIMenu(title: "File", children: [newAction,loadAction,recentMenu, saveAction, saveAsAction,exportAction].reversed())
+        let fileMenu = UIMenu(title: "File", children: [newAction,loadAction,recentMenu, saveAction, saveAsAction,saveToGallery].reversed())
         
         // --- Sottomenu "Layers" ---
         
@@ -501,13 +505,19 @@ extension EditorModel {
             
         }*/
         
+         let textAction = UIAction(title: "Add text...", image: nil) { _ in
+             
+             EditorModel.shared.showTextInput = true
+             
+         }
+         
         let zoomToFitAction = UIAction(title: "Zoom to fit", image: nil) { _ in
             
             EditorModel.shared.zoomToFit()
             
         }
         
-        let editMenu = UIMenu(title: "Edit", children: [zoomToFitAction].reversed())
+        let editMenu = UIMenu(title: "Edit", children: [zoomToFitAction,textAction].reversed())
         
         // Creiamo il sottomenu "Layers"
         //let layersMenu = UIMenu(title: "Layers", children: [newLayerAction, viewLayersAction].reversed())
@@ -523,5 +533,87 @@ extension EditorModel {
         
        
         // Assegniamo il bottone come accessoryItem del picker
+    }
+    
+    func addTextStroke(text: String, center: CGPoint) {
+        // 1. Trova l'indice del layer attivo.
+        guard let layerIndex = layers.firstIndex(where: { $0.id == activeCanvasId }) else {
+            print("Errore: Nessun layer attivo trovato per aggiungere il testo.")
+            return
+        }
+        let layer = layers[layerIndex]
+        // 2. Definisci i parametri per il tuo testo.
+        //    In futuro potrai renderli personalizzabili dall'utente.
+        //let font = UIFont.systemFont(ofSize: 80, weight: .bold)
+        let font = UIFont(name: "Impact", size: 80)!
+        //let font = UIFont(name: "Verdana", size: 19)!
+     
+        let color = UIColor.darkGray
+        let width: CGFloat = 3.0
+        let scale: CGFloat = 1.0
+        
+        // 3. Convertiamo la posizione (che è un offset) in un punto centrale.
+        //    NOTA: Questo assume che la posizione iniziale della TextInput sia (0,0)
+        //    rispetto alla canvas. Potrebbe essere necessario un aggiustamento.
+        //let center = CGPoint(x: position.width, y: position.height)
+        //let center = CGPoint(x: 200, y: 130)
+    
+        // 4. Chiama il nostro convertitore per creare gli stroke.
+        let newStrokes = FontStrokeConverter.createStrokes(
+            fromText: text,
+            font: font,
+            at: center,
+            color: color,
+            width: width,
+            scale: scale
+        )
+        
+        guard !newStrokes.isEmpty else {
+            print("Conversione del testo in stroke non ha prodotto risultati.")
+            return
+        }
+        
+        if let canvas = layer.canvas {
+            let drawing1 = PKDrawing(strokes: newStrokes)
+            let newDrawing1 = canvas.drawing.appending(drawing1)
+            setNewDrawingUndoable(newDrawing1,to:canvas)
+        }
+        
+       
+    }
+    
+    func setNewDrawingUndoable(_ newDrawing: PKDrawing, to canvasView: PKCanvasView) {
+        Task{
+            let oldDrawing = canvasView.drawing
+            if let undoManager = canvasView.undoManager {
+                undoManager.registerUndo(withTarget: self) {
+                    
+                    $0.setNewDrawingUndoable(oldDrawing,to: canvasView)
+                }
+            }
+            canvasView.drawing = newDrawing
+        }
+    }
+    
+    func convertScreenPointToCanvasPoint(_ screenPoint: CGPoint, for layerID: Int) -> CGPoint? {
+        
+        // 1. Troviamo la canvas attiva dal nostro dizionario.
+        guard let canvas = canvasViews[layerID] as? PKCanvasView else {
+            print("Errore di conversione: Canvas non trovata per il layer \(layerID)")
+            return nil
+        }
+        
+        // 2. Troviamo la finestra dell'app, che rappresenta il sistema di coordinate "globali".
+        guard let window = canvas.window else {
+            print("Errore di conversione: Finestra della canvas non trovata.")
+            return nil
+        }
+        
+        // 3. Usiamo il metodo 'convert' di UIView.
+        //    Chiediamo alla nostra 'canvas' di convertire il 'screenPoint',
+        //    dicendogli che il punto di partenza proviene dal sistema di coordinate della 'finestra'.
+        let canvasPoint = canvas.convert(screenPoint, from: window)
+        
+        return canvasPoint
     }
 }

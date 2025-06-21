@@ -18,6 +18,8 @@ class LayerCanvasModel:ObservableObject,Identifiable, Codable {
     @Published var drawing: PKDrawing = PKDrawing()
     @Published var drawingPolicy: PKCanvasViewDrawingPolicy = .anyInput
     @Published var pickerVisibility = false
+    var canvas:PKCanvasView?
+    
     var id:Int {currentCanvasId}
     
     init(currentCanvasId:Int){

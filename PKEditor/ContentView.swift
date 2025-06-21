@@ -16,21 +16,19 @@ import PhotosUI
 
 struct ContentView: View {
     @StateObject var model = EditorModel.shared
-    //@Environment(\.undoManager) var undoManager
     //@AppStorage("lastToolPickerState")
     //private var storedToolPickerStateData: Data?
     //@State private var toolPickerState: ToolPickerState = ToolPickerState()
-    //@State var editorId = UUID().uuidString
-    
+     
     @State var showEditorDetail = false
-    @State  var selectedPhoto: PhotosPickerItem?
-   
+    @State var selectedPhoto: PhotosPickerItem?
     @State var projectName = ""
+    
+    
+    
    
     var body: some View {
         VStack(spacing: 0) {
-            
-            
             ZStack {
                 //Color.gray.opacity(0.1).ignoresSafeArea()
                 Color(uiColor: UIColor.systemBackground).opacity(1.0)
@@ -46,6 +44,9 @@ struct ContentView: View {
                     )
                     .allowsHitTesting(model.activeCanvasId == layer.currentCanvasId)
                     .zIndex(Double(index))
+                }
+                if model.showTextInput {
+                   TextInput()
                 }
             }
             //.padding(20.0)
@@ -72,7 +73,7 @@ struct ContentView: View {
             }*/
             
             .onChange(of: model.activeCanvasId) { oldState, newState in
-             }
+            }
             .sheet(isPresented: $model.showLayerEditorDetail){
                 LayersListView(activeCanvas: $model.activeCanvasId)
             }
@@ -93,14 +94,12 @@ struct ContentView: View {
             }
             
             .onChange(of: model.showPhotoPicker) { oldState, newState in
-                var photosURL = URL(string: "photos-redirect://")
+                let photosURL = URL(string: "photos-redirect://")
                 if let url = photosURL {
-                                // Controlliamo se l'app può aprire questo tipo di URL
-                                if UIApplication.shared.canOpenURL(url) {
-                                    // Apriamo l'URL, che lancerà l'app Foto
-                                    UIApplication.shared.open(url)
-                                }
-                            }
+                     if UIApplication.shared.canOpenURL(url) {
+                        UIApplication.shared.open(url)
+                     }
+                }
                 model.showPhotoPicker = false
             }.fileImporter(
                 isPresented: $model.showDocPicker,
@@ -109,7 +108,7 @@ struct ContentView: View {
                 switch result {
                 case .success(let url):
                     DispatchQueue.main.async{
-                        guard url.startAccessingSecurityScopedResource() else { // Notice this line right here
+                        guard url.startAccessingSecurityScopedResource() else {
                             return
                         }
                         model.loadProject(from: url)

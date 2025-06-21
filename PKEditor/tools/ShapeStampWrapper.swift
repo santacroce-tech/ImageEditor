@@ -12,7 +12,7 @@ import PencilKit
 ///
 /// This class defines additional attributes for the animal stamp tool because
 /// `PKToolPickerCustomItem` disallows subclassing.
-@MainActor class AnimalStampWrapper:ObservableObject {
+@MainActor class ShapeStampWrapper:ObservableObject {
     let toolItem: PKToolPickerCustomItem
     let attributeViewController: AttributeViewController
 
@@ -85,7 +85,7 @@ import PencilKit
     }
 }
 
-fileprivate extension AnimalStampWrapper {
+fileprivate extension ShapeStampWrapper {
     
     /// A model for the attribute view controller for the animal stamp.
     class Model: AttributeViewController.Model {

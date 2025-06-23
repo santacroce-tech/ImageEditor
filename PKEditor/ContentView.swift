@@ -66,6 +66,12 @@ struct ContentView: View {
                  storedToolPickerStateData = encoded
                  }*/
             }
+            .sheet(isPresented: $model.showFontSheet) {
+                FontBottomSheetView(isVisible:$model.showFontSheet)
+                    .presentationDetents([.medium])
+                    .background(.background)
+                
+            }
             /*.onChange(of: toolPickerState) { oldState, newState in
                 /*if let encoded = try? JSONEncoder().encode(newState) {
                  storedToolPickerStateData = encoded

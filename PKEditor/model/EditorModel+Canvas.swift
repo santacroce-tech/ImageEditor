@@ -16,15 +16,15 @@ extension EditorModel {
     
     func addTextStroke(text: String, center: CGPoint) {
         // 1. Trova l'indice del layer attivo.
-        guard let layerIndex = layers.firstIndex(where: { $0.id == activeCanvasId }) else {
+        guard let layer = layers.first(where: { $0.id == activeCanvasId }) else {
             print("Errore: Nessun layer attivo trovato per aggiungere il testo.")
             return
         }
-        let layer = layers[layerIndex]
+        //let layer = layers[layerIndex]
         // 2. Definisci i parametri per il tuo testo.
         //    In futuro potrai renderli personalizzabili dall'utente.
         //let font = UIFont.systemFont(ofSize: 80, weight: .bold)
-        let font = UIFont(name: "Impact", size: 80)!
+        let font = currentFont
         //let font = UIFont(name: "Verdana", size: 19)!
         
         let color = textStampWrapper.toolItem.color
@@ -76,8 +76,14 @@ extension EditorModel {
     
     func convertScreenPointToCanvasPoint(_ screenPoint: CGPoint, for layerID: Int) -> CGPoint? {
         
+        
+        guard let layer = layers.first(where: { $0.id == layerID }) else {
+            print("Errore: Nessun layer attivo trovato per aggiungere il testo.")
+            return nil
+        }
+        
         // 1. Troviamo la canvas attiva dal nostro dizionario.
-        guard let canvas = layers[layerID].canvas else {
+        guard let canvas = layer.canvas else {
             print("Errore di conversione: Canvas non trovata per il layer \(layerID)")
             return nil
         }

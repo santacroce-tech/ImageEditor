@@ -44,13 +44,17 @@ class EditorModel: NSObject,ObservableObject {
     @Published var minimumZoomScale = 0.3
     @Published var maximumZoomScale = 5.0
     @Published var zoomScale: CGFloat = 1.0
-
+  
+    @Published var showFontPicker:Bool = false
+    @Published var showFontSheet = false
+    @Published var currentFont: UIFont = UIFont.systemFont(ofSize: 24, weight: .bold)
+   
     //var canvasViews: [Int: PKCanvasView?] = [:]
     var recentProjects:[String] = []
     
     var toolPicker: PKToolPicker?
     var mainMenu:UIMenu!
-    
+   
     override init() {
         super.init()
         projectName = defProjectName
@@ -96,7 +100,6 @@ class EditorModel: NSObject,ObservableObject {
     
     
     func zoomToFit() {
-        // La logica per trovare i layer visibili e la canvas attiva rimane invariata
         let visibleLayers = self.layers.filter { $0.visible && !$0.drawing.bounds.isEmpty }
         guard !visibleLayers.isEmpty else { return }
         
@@ -172,17 +175,7 @@ class EditorModel: NSObject,ObservableObject {
             canvas.setContentOffset(contentOffset, animated: false) // Poi centra con una lieve animazione
         }
     }
-    /*
-    /// Registra una PKCanvasView nel modello quando viene creata.
-    func registerCanvasView(_ canvasView: PKCanvasView, forLayerID layerID: Int) {
-        canvasViews[layerID] = canvasView
-    }
     
-    /// Rimuove il riferimento a una PKCanvasView quando viene distrutta.
-    func unregisterCanvasView(forLayerID layerID: Int) {
-        canvasViews[layerID] = nil
-    }
-    */
     
 }
 

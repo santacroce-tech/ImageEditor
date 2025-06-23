@@ -6,56 +6,19 @@
 //
 
 import SwiftUI
-/*
- struct TextInput: View {
- @State private var currentPosition: CGSize = .zero
- @State private var newPosition: CGSize = .zero
- @State var inputText = ""
- 
- 
- var body: some View {
- TextField("Type some text here...", text: $inputText,axis: .vertical)
- .font(.title2)
- 
- .multilineTextAlignment(.leading)
- .lineLimit(nil)
- 
- .frame(minWidth:200,maxWidth: .infinity)
- .padding(20)
- .border(Color.accentColor, width: 2)
- .padding(20)
- .offset(
- x: currentPosition.width,
- y: currentPosition.height)
- .gesture(DragGesture()
- .onChanged { value in
- currentPosition = CGSize(
- width: value.translation.width + newPosition.width,
- height: value.translation.height + newPosition.height)
- }
- .onEnded { value in
- currentPosition = CGSize(
- width: value.translation.width + newPosition.width,
- height: value.translation.height + newPosition.height)
- newPosition = currentPosition
- }
- )
- }
- }
- 
- */
 struct TextInput: View {
     @State private var currentPosition: CGSize = .zero
     @State private var newPosition: CGSize = .zero
     @State var inputText = ""
-    
+    @StateObject private var model = EditorModel.shared
+  
     // --- Passaggio 1: Aggiungi una variabile di stato per il focus ---
     // Questa variabile terrà traccia di quale campo di testo è attivo.
     @FocusState private var isTextFieldFocused: Bool
     
     var body: some View {
         TextField("Type some text here...", text: $inputText, axis: .vertical)
-            .font(.title2)
+            .font(Font(model.currentFont))
             .multilineTextAlignment(.leading)
             .lineLimit(nil)
             .frame(minWidth:200, maxWidth: .infinity)
@@ -88,6 +51,7 @@ struct TextInput: View {
                     // Bottone per il Font
                     Group{
                         Button {
+                            model.showFontSheet = true
                             print("Azione per cambiare Font...")
                         } label: {
                             Image(systemName: "textformat.characters")
@@ -152,20 +116,21 @@ struct TextInput: View {
                 }
                 
             }
-        //      enumerateFonts()
+            
+       
         
     }
     
-     
-     func enumerateFonts(){
-         
-         for fontFamily in UIFont.familyNames {
-             
-             print("Font family name = \(fontFamily as String)");
-             for fontName in UIFont.fontNames(forFamilyName: fontFamily as String) {
-                 print("- Font name = \(fontName)");
-             }
-             print("\n");
-         }
-     }
+    
+    func enumerateFonts(){
+        
+        for fontFamily in UIFont.familyNames {
+            
+            print("Font family name = \(fontFamily as String)");
+            for fontName in UIFont.fontNames(forFamilyName: fontFamily as String) {
+                print("- Font name = \(fontName)");
+            }
+            print("\n");
+        }
+    }
 }

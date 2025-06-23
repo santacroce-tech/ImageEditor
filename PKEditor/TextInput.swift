@@ -86,70 +86,86 @@ struct TextInput: View {
                 // Usiamo un ToolbarItemGroup con la placement specifica '.keyboard'
                 ToolbarItemGroup(placement: .keyboard) {
                     // Bottone per il Font
-                    Button {
-                        print("Azione per cambiare Font...")
-                    } label: {
-                        Image(systemName: "textformat.characters")
-                    }
-                    
-                    // Bottone per lo Stile
-                    Button {
-                        print("Azione per cambiare Stile...")
-                    } label: {
-                        Image(systemName: "bold")
-                    }
-                    
-                    // Bottone per la Dimensione
-                    Button {
-                        print("Azione per cambiare Dimensione...")
-                    } label: {
-                        Image(systemName: "textformat.size")
-                    }
-                    Button {
-                        print("...")
-                    } label: {
-                        Image(systemName: "text.alignleft")
-                    }
-                    
-                    
-                    Spacer()
-                    Button {
-                        isTextFieldFocused = false
-                    
-                    } label: {
-                        Image(systemName: "xmark")
-                    }
-                    
-                    Button {
-                        isTextFieldFocused = false
-                        if inputText.count > 0 {
-                           
-                            let screenCenter = CGPoint(x: UIScreen.main.bounds.midX, y: UIScreen.main.bounds.midY)
-                            
-                            
-                            let finalScreenPoint = CGPoint(x: screenCenter.x + newPosition.width,
-                                                           y: screenCenter.y + newPosition.height)
-                           
-                            let activeLayerID = EditorModel.shared.activeCanvasId
-                            if let canvasCenterPoint = EditorModel.shared.convertScreenPointToCanvasPoint(finalScreenPoint, for: activeLayerID) {
-                                
-                                // 4. Ora chiamiamo addTextStroke con la coordinata CORRETTA.
-                                EditorModel.shared.addTextStroke(text: inputText, center: canvasCenterPoint)
-                                
-                            } else {
-                                print("Errore: impossibile convertire le coordinate per la canvas attiva.")
-                            }
-                            
-                            //EditorModel.shared.addTextStroke(text: inputText, position: newPosition)
+                    Group{
+                        Button {
+                            print("Azione per cambiare Font...")
+                        } label: {
+                            Image(systemName: "textformat.characters")
                         }
-                        EditorModel.shared.showTextInput = false
-                    } label: {
-                        Image(systemName: "return")
+                        
+                        // Bottone per lo Stile
+                        Button {
+                            print("Azione per cambiare Stile...")
+                        } label: {
+                            Image(systemName: "bold")
+                        }
+                        
+                        // Bottone per la Dimensione
+                        Button {
+                            print("Azione per cambiare Dimensione...")
+                        } label: {
+                            Image(systemName: "textformat.size")
+                        }
+                        Button {
+                            print("...")
+                        } label: {
+                            Image(systemName: "text.alignleft")
+                        }
+                        
+                        
+                        Spacer()
+                        Button {
+                            isTextFieldFocused = false
+                            
+                        } label: {
+                            Image(systemName: "xmark")
+                        }
+                        
+                        Button {
+                            isTextFieldFocused = false
+                            if inputText.count > 0 {
+                                
+                                let screenCenter = CGPoint(x: UIScreen.main.bounds.midX, y: UIScreen.main.bounds.midY)
+                                
+                                
+                                let finalScreenPoint = CGPoint(x: screenCenter.x + newPosition.width,
+                                                               y: screenCenter.y + newPosition.height)
+                                
+                                let activeLayerID = EditorModel.shared.activeCanvasId
+                                if let canvasCenterPoint = EditorModel.shared.convertScreenPointToCanvasPoint(finalScreenPoint, for: activeLayerID) {
+                                    
+                                    // 4. Ora chiamiamo addTextStroke con la coordinata CORRETTA.
+                                    EditorModel.shared.addTextStroke(text: inputText, center: canvasCenterPoint)
+                                    
+                                } else {
+                                    print("Errore: impossibile convertire le coordinate per la canvas attiva.")
+                                }
+                                
+                                //EditorModel.shared.addTextStroke(text: inputText, position: newPosition)
+                            }
+                            EditorModel.shared.showTextInput = false
+                        } label: {
+                            Image(systemName: "return")
+                        }
                     }
-                    
+                    .foregroundStyle(.primary)
                 }
+                
             }
         //      enumerateFonts()
         
     }
+    
+     
+     func enumerateFonts(){
+         
+         for fontFamily in UIFont.familyNames {
+             
+             print("Font family name = \(fontFamily as String)");
+             for fontName in UIFont.fontNames(forFamilyName: fontFamily as String) {
+                 print("- Font name = \(fontName)");
+             }
+             print("\n");
+         }
+     }
 }

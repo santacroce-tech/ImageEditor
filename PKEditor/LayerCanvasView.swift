@@ -19,7 +19,7 @@ struct LayerCanvasView: UIViewRepresentable {
     @State private var localToolPicker: PKToolPicker
     var model:LayerCanvasModel
     let accessoryButton = UIBarButtonItem(image: UIImage(systemName: "signature"), style: .plain, target: nil, action: nil)
-    
+    @ObservedObject var editor = EditorModel.shared
     //toolPickerState: Binding<ToolPickerState>,
     init(model:LayerCanvasModel, activeCanvasId: Binding<Int>,  sharedOffset: Binding<CGPoint>) {
         self.model = model
@@ -98,6 +98,9 @@ struct LayerCanvasView: UIViewRepresentable {
         canvasView.backgroundColor = .clear
         canvasView.delegate = context.coordinator
         canvasView.contentSize = EditorModel.shared.contentSize //CGSize(width: 2000, height: 2000)
+        
+        canvasView.minimumZoomScale = EditorModel.shared.minimumZoomScale
+        canvasView.maximumZoomScale = EditorModel.shared.maximumZoomScale
         model.canvas = canvasView
         if UIDevice.current.userInterfaceIdiom == .pad {
             // Su iPad, questa policy permetterà di disegnare con la Pencil e scorrere con il dito.
@@ -126,8 +129,6 @@ struct LayerCanvasView: UIViewRepresentable {
          */
         context.coordinator.setUpGestureRecognizers(on: canvasView)
         
-        
-        
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             // Only set visible and become first responder if this is the active canvas on initial load
             let shouldBeActive = (model.currentCanvasId == activeCanvasId)
@@ -151,7 +152,7 @@ struct LayerCanvasView: UIViewRepresentable {
          debugView.tag = 12345 // Un tag per poterla rimuovere dopo
          canvasView.addSubview(debugView)
          */
-        EditorModel.shared.registerCanvasView(canvasView, forLayerID: model.id)
+        //EditorModel.shared.registerCanvasView(canvasView, forLayerID: model.id)
 
         return canvasView
     }
@@ -187,13 +188,18 @@ struct LayerCanvasView: UIViewRepresentable {
         }
         
         
-        if !shouldBeActive && uiView.contentOffset != sharedOffset {
+        if !shouldBeActive {
             
             //&& sharedOffset != .zero
             // Usiamo `setContentOffset` senza animazione per un allineamento istantaneo.
             //DispatchQueue.main.async{
-            
+            if uiView.zoomScale != EditorModel.shared.zoomScale {
+                // Applichiamo direttamente lo zoomScale. Non serve animazione.
+                uiView.zoomScale = EditorModel.shared.zoomScale
+            }
+            if  uiView.contentOffset != sharedOffset {
                 uiView.setContentOffset(sharedOffset, animated: false)
+            }
             //}
         }
     }
@@ -356,34 +362,22 @@ extension LayerCanvasView.Coordinator {
         //canvasView.addSubview(imageView)
     }
     
-    /*
-    func setNewDrawingUndoable(_ newDrawing: PKDrawing, to canvasView: PKCanvasView) {
-        let oldDrawing = canvasView.drawing
-        if let undoManager = canvasView.undoManager {
-            undoManager.registerUndo(withTarget: self) {
-                $0.setNewDrawingUndoable(oldDrawing,to: canvasView)
-            }
-        }
-        canvasView.drawing = newDrawing
-    }
-     */
-    
-    func enumerateFonts(){
-        
-        for fontFamily in UIFont.familyNames {
-            
-            print("Font family name = \(fontFamily as String)");
-            for fontName in UIFont.fontNames(forFamilyName: fontFamily as String) {
-                print("- Font name = \(fontName)");
-            }
-            print("\n");
-        }
-    }
+   
 }
 
 
 // MARK: - PencilKit Delegates
 extension LayerCanvasView.Coordinator: PKCanvasViewDelegate, PKToolPickerObserver {
+    
+    func scrollViewDidZoom(_ scrollView: UIScrollView) {
+       // La logica è identica a quella per lo scroll.
+       let isActive = parent.model.id == parent.activeCanvasId
+       
+       if isActive {
+           // Se è la tela attiva, aggiorniamo lo zoom condiviso nel nostro modello.
+           EditorModel.shared.zoomScale = scrollView.zoomScale
+       }
+   }
     
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
         // Controlliamo se questa è la tela attiva.

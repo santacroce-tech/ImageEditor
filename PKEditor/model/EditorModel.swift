@@ -8,19 +8,19 @@
 import Foundation
 import Combine
 import UIKit
-import PencilKit
+@preconcurrency import PencilKit
 
-struct ProjectData: Codable {
-    let contentSize: CGSize
-    let contentOffset: CGPoint
-    let layers: [LayerCanvasModel]
-}
+/*struct ProjectData: Codable {
+ let contentSize: CGSize
+ let contentOffset: CGPoint
+ let layers: [LayerCanvasModel]
+ }*/
 
 
 @MainActor
 class EditorModel: NSObject,ObservableObject {
     static let shared = EditorModel()
-    @Published var layers: [LayerCanvasModel] = [] 
+    @Published var layers: [LayerCanvasModel] = []
     @Published var shapeStampWrapper = ShapeStampWrapper()
     @Published var textStampWrapper = TextStampWrapper()
     @Published var projectID = UUID()
@@ -41,8 +41,11 @@ class EditorModel: NSObject,ObservableObject {
     @Published var contentOffset: CGPoint = .zero
     //@Published var contentSize: CGSize = .zero
     @Published var contentSize: CGSize = CGSize(width: 1000, height: 1000)
-    
-    private var canvasViews: [Int: PKCanvasView?] = [:]
+    @Published var minimumZoomScale = 0.3
+    @Published var maximumZoomScale = 5.0
+    @Published var zoomScale: CGFloat = 1.0
+
+    //var canvasViews: [Int: PKCanvasView?] = [:]
     var recentProjects:[String] = []
     
     var toolPicker: PKToolPicker?
@@ -67,8 +70,6 @@ class EditorModel: NSObject,ObservableObject {
         activeCanvasId = canvasId
     }
     
-    
-    
     func rotateLastStroke(for layerID: Int, byDegrees degrees: Double) {
         
         guard let layerIndex = layers.firstIndex(where: { $0.id == layerID }) else { return }
@@ -92,226 +93,36 @@ class EditorModel: NSObject,ObservableObject {
         layers[layerIndex].drawing = drawing
         
     }
-    /*
-     func rotateLastStroke(for layerID: Int, byDegrees degrees: Double) {
-     
-     guard let layerIndex = layers.firstIndex(where: { $0.id == layerID }) else { return }
-     var drawing = layers[layerIndex].drawing
-     
-     guard let lastStrokeIndex = drawing.strokes.indices.last else {
-     print("Nessuno stroke da ruotare.")
-     return
-     }
-     
-     let lastStrokeBounds = drawing.strokes[lastStrokeIndex].renderBounds
-     let center = CGPoint(x: lastStrokeBounds.midX, y: lastStrokeBounds.midY)
-     
-     // --- SEZIONE CORRETTA PER LA TRASFORMAZIONE ---
-     
-     // 1. Inizia con una trasformazione "identità" (cioè nessuna trasformazione).
-     var transform = CGAffineTransform.identity
-     
-     // 2. Applica una traslazione per portare il centro all'origine (0,0).
-     transform = transform.translatedBy(x: center.x, y: center.y)
-     
-     // 3. Applica la rotazione.
-     let radians = CGFloat(degrees) * .pi / 180.0
-     transform = transform.rotated(by: radians)
-     
-     // 4. Applica la traslazione inversa per riportare il centro alla sua posizione originale.
-     transform = transform.translatedBy(x: -center.x, y: -center.y)
-     
-     // ----------------------------------------------
-     
-     // Applica la trasformazione finale all'ultimo stroke
-     //drawing.strokes[lastStrokeIndex].transform(using: transform)
-     DispatchQueue.main.async {
-     drawing.strokes[lastStrokeIndex].transform = transform
-     
-     self.objectWillChange.send()
-     self.layers[layerIndex].drawing = drawing
-     }
-     
-     }
-     */
     
-    
-    private func getDocumentsDirectory() -> URL {
-        let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
-        return paths[0]
-    }
-    
-    func checkIfProjectExists(name:String) -> Bool {
-        let filename = "\(name).json"
-        let url = getDocumentsDirectory().appendingPathComponent(filename)
-        let filePath = url.path
-        let fileManager = FileManager.default
-        let exists = fileManager.fileExists(atPath: filePath)
-        return exists
-    }
-    
-    func saveProject(name:String? = nil) {
-        let newName = name ?? projectName
-        
-        let filename = "\(newName).json"
-        let url = getDocumentsDirectory().appendingPathComponent(filename)
-        
-        let thumbFilename = "\(newName).png"
-        let thumbUrl = getDocumentsDirectory().appendingPathComponent(thumbFilename)
-        
-        let projectData = ProjectData(contentSize: self.contentSize, contentOffset: self.contentOffset,layers: self.layers)
-        
-        let encoder = JSONEncoder()
-        do {
-            let data = try encoder.encode(projectData)
-            try data.write(to: url, options: [.atomic, .completeFileProtection])
-            print("✅ Progetto salvato con successo in: \(url.path)")
-            projectName = newName
-            
-            
-            if let image = renderLayers() , let pngData =  image.pngData() {
-                // Ora puoi salvare questo 'pngData' su file
-                
-                try pngData.write(to: thumbUrl, options: [
-                    .atomic, // Scrive su un file temporaneo e lo rinomina solo a operazione completata, per evitare corruzione.
-                    //.completeFileProtection // Cripta il file quando il dispositivo è bloccato.
-                ])
-            }
-            
-        } catch {
-            print("❌ Errore durante il salvataggio del progetto: \(error.localizedDescription)")
-        }
-        
-        if name != nil {
-            self.recentProjects = getRecentProjects()
-            createPopupMenu()
-        }
-    }
-    
-    func newProject(){
-        canvasViews.removeAll()
-        layers.removeAll()
-        projectName = defProjectName
-        addLayer()
-        activeCanvasId = 1
-        self.projectID = UUID()
-        
-    }
-    
-    /// Carica un progetto da un file JSON e sostituisce i layer correnti.
-    func loadProject(_ name: String = "drawingProject") {
-        let filename = "\(name).json"
-        let url = getDocumentsDirectory().appendingPathComponent(filename)
-        loadProject(from: url)
-        
-    }
-    
-    func loadProject(from url: URL) {
-        //let filename = "\(name).json"
-        //let url = getDocumentsDirectory().appendingPathComponent(filename)
-        let name = url.deletingPathExtension().lastPathComponent
-        canvasViews.removeAll()
-      
-        let decoder = JSONDecoder()
-        do {
-            let data = try Data(contentsOf: url)
-            
-            let loadedProject = try decoder.decode(ProjectData.self, from: data)
-            self.contentSize = loadedProject.contentSize
-            self.contentOffset = loadedProject.contentOffset
-            self.layers = loadedProject.layers
-           
-            //let loadedLayers = try decoder.decode([LayerCanvasModel].self, from: data)
-            //self.layers = loadedLayers
-            activeCanvasId = 1
-            projectName = name
-            self.projectID = UUID()
-            
-            
-            
-            print("✅ Progetto caricato con successo.")
-        } catch {
-            print("❌ Errore durante il caricamento del progetto: \(error.localizedDescription)")
-        }
-    }
-    
-    func exportToGallery()  {
-        // 4. Salva l'immagine finale nella galleria fotografica
-        if let compositeImage = renderLayers() {
-            UIImageWriteToSavedPhotosAlbum(compositeImage, self, #selector(imageSaveCompletion), nil)
-            EditorModel.shared.showPhotoPicker = true
-        }
-    }
-    
-    
-    func renderLayers() -> UIImage? {
-         
-         // 1. Filtra per ottenere solo i layer visibili e con qualcosa disegnato
-         let visibleLayers = self.layers.filter { $0.visible && !$0.drawing.bounds.isEmpty }
-         
-         guard !visibleLayers.isEmpty else {
-             print("Nessun layer visibile con contenuto da esportare.")
-             return nil
-         }
-         
-         // 2. Calcola il rettangolo totale che contiene tutti i disegni
-         let totalBounds = visibleLayers.reduce(CGRect.null) { (result, layer) -> CGRect in
-             return result.union(layer.drawing.bounds)
-         }
-         
-         guard !totalBounds.isNull, totalBounds.width > 0, totalBounds.height > 0 else {
-             print("Dimensioni del disegno non valide.")
-             return nil
-         }
-         
-         // 3. Usa UIGraphicsImageRenderer per creare l'immagine composita
-         let renderer = UIGraphicsImageRenderer(bounds: totalBounds)
-         
-         let compositeImage = renderer.image { context in
-             // Disegniamo i layer uno sopra l'altro, dal basso verso l'alto
-             for layer in self.layers {
-                 // Se il layer non è visibile, lo saltiamo
-                 guard layer.visible else { continue }
-                 
-                 // Generiamo l'immagine per questo singolo layer
-                 let layerImage = layer.drawing.image(from: totalBounds, scale: UIScreen.main.scale)
-                 
-                 // Disegniamo l'immagine nel contesto, rispettando la sua opacità
-                 layerImage.draw(in: totalBounds, blendMode: .normal, alpha: layer.opacity)
-             }
-         }
-         return compositeImage
-       
-     }
-
-     /// Questo metodo rimane invariato. Viene chiamato al termine del salvataggio.
-     @objc func imageSaveCompletion(_ image: UIImage, didFinishSavingWithError error: Error?, contextInfo: UnsafeRawPointer) {
-         if let error = error {
-             print("❌ Errore nel salvataggio dell'immagine composita: \(error.localizedDescription)")
-         } else {
-             print("✅ Immagine composita salvata con successo nella galleria!")
-         }
-     }
     
     func zoomToFit() {
         // La logica per trovare i layer visibili e la canvas attiva rimane invariata
         let visibleLayers = self.layers.filter { $0.visible && !$0.drawing.bounds.isEmpty }
         guard !visibleLayers.isEmpty else { return }
-
-        let totalBounds = visibleLayers.reduce(CGRect.null) { $0.union($1.drawing.bounds) }
         
-        guard let activeCanvas = canvasViews[activeCanvasId], // Usa il dizionario corretto
+        let totalBounds = visibleLayers.reduce(CGRect.null) { $0.union($1.drawing.bounds)
+        }
+        //let totalBounds = CGRect(x: 0,y: 0,width: contentSize.width,height: contentSize.height)
+        
+        
+        guard let layer = layers.first(where: { $0.id == activeCanvasId }) else {
+            print("Errore: Nessun layer attivo trovato per aggiungere il testo.")
+            return
+        }
+        
+        //let layer = layers[layerIndex]
+        guard let activeCanvas = layer.canvas, // Usa il dizionario corretto
               !totalBounds.isNull, totalBounds.width > 0, totalBounds.height > 0 else {
             print("Impossibile calcolare lo zoom.")
             return
         }
-
+        
         // --- LOGICA DI ZOOM (invariata) ---
-        let canvasFrame = activeCanvas!.bounds // Usiamo .bounds per la dimensione visibile effettiva
+        let canvasFrame = activeCanvas.bounds // Usiamo .bounds per la dimensione visibile effettiva
         let widthScale = canvasFrame.width / totalBounds.width
         let heightScale = canvasFrame.height / totalBounds.height
         let fitScale = min(widthScale, heightScale) * 0.95 // Aggiungiamo un piccolo margine del 5%
-
+        
         // --- LOGICA DI CENTRATURA (NUOVA) ---
         
         // 1. Calcoliamo le dimensioni del nostro contenuto DOPO che è stato scalato
@@ -330,291 +141,48 @@ class EditorModel: NSObject,ObservableObject {
         
         // 3. L'offset finale deve tener conto anche della posizione originale del disegno.
         //    Sottraiamo l'origine del totalBounds (scalata) e aggiungiamo il nostro margine calcolato.
-        let newContentOffset = CGPoint(
-            x: -totalBounds.origin.x * fitScale + offsetX,
-            y: +totalBounds.origin.y * fitScale + offsetY
-        )
         
+        let newContentOffset = CGPoint(
+            x: totalBounds.origin.x * fitScale - offsetX,
+            y: totalBounds.origin.y * fitScale - offsetY
+        )
+        print ("newContentOffset \(newContentOffset)")
         // --- APPLICAZIONE A TUTTE LE TELE ---
         
         // 4. Applichiamo sia lo zoom CHE il nuovo contentOffset a TUTTE le canvas.
-        for id in canvasViews.keys {
-            let canvas = canvasViews[id]!!
+        
+        contentOffset = newContentOffset
+        //contentOffset = .zero
+        for layer in layers {
+            let canvas = layer.canvas!
             canvas.minimumZoomScale = fitScale
             canvas.setZoomScale(fitScale, animated: false) // Prima imposta lo zoom senza animazione
-            canvas.setContentOffset(newContentOffset, animated: false) // Poi centra con una lieve animazione
+            canvas.setContentOffset(contentOffset, animated: false) // Poi centra con una lieve animazione
         }
         
         print("Eseguito Zoom to Fit con centratura.")
     }
-     /*
-      func zoomToFit() { // Non abbiamo più bisogno dell'ID del layer
-        
-        // 1. Filtra per ottenere solo i layer visibili e con qualcosa disegnato
-        let visibleLayers = self.layers.filter { $0.visible && !$0.drawing.bounds.isEmpty }
-        
-        guard !visibleLayers.isEmpty else {
-            print("Nessun layer visibile con contenuto per eseguire lo zoom.")
-            return
-        }
-        
-        // 2. Calcola il rettangolo totale che contiene TUTTI i disegni visibili
-        let totalBounds = visibleLayers.reduce(CGRect.null) { (result, layer) -> CGRect in
-            return result.union(layer.drawing.bounds)
-        }
-
-        // 3. Prendiamo la canvas attiva come riferimento per le dimensioni dello schermo
-        guard let activeCanvas = canvasViews[activeCanvasId] as? PKCanvasView, // Assumendo che tu abbia una proprietà activeCanvasId nel modello
-              !totalBounds.isNull, totalBounds.width > 0, totalBounds.height > 0 else {
-            print("Impossibile calcolare lo zoom: canvas attiva non trovata o dimensioni non valide.")
-            return
-        }
-
-        // 4. Calcoliamo lo zoom necessario per far stare il "totalBounds" nella vista.
-        let canvasFrame = activeCanvas.frame
-        let widthScale = canvasFrame.width / totalBounds.width
-        let heightScale = canvasFrame.height / totalBounds.height
-        let fitScale = min(widthScale, heightScale) * 0.95 // Aggiungiamo un piccolo margine del 5%
-        
-        // 5. Applichiamo il nuovo zoom a TUTTE le canvas registrate
-        for canvas in canvasViews.values {
-            guard let canvas = canvas else { continue }
-            canvas.minimumZoomScale = fitScale
-            canvas.setZoomScale(fitScale, animated: true)
-        }
-        
-        print("Eseguito Zoom to Fit su tutti i layer con scala: \(fitScale)")
-    }
-      */
-        
-       /// Registra una PKCanvasView nel modello quando viene creata.
-       func registerCanvasView(_ canvasView: PKCanvasView, forLayerID layerID: Int) {
-           canvasViews[layerID] = canvasView
-       }
-       
-       /// Rimuove il riferimento a una PKCanvasView quando viene distrutta.
-       func unregisterCanvasView(forLayerID layerID: Int) {
-           canvasViews[layerID] = nil
-       }
     
-    /*func loadRecent(){
-        self.recentProjects.removeAll()
-        self.recentProjects = getRecentProjects()
+    func zoomTo1of1() {
+        zoomScale = 1
+        contentOffset = .zero
+        for layer in layers {
+            let canvas = layer.canvas!
+            canvas.setZoomScale(zoomScale, animated: false) // Prima imposta lo zoom senza animazione
+            canvas.setContentOffset(contentOffset, animated: false) // Poi centra con una lieve animazione
+        }
     }
-     */
+    /*
+    /// Registra una PKCanvasView nel modello quando viene creata.
+    func registerCanvasView(_ canvasView: PKCanvasView, forLayerID layerID: Int) {
+        canvasViews[layerID] = canvasView
+    }
     
-    private func getRecentProjects() -> [String] {
-        self.recentProjects.removeAll()
-     
-        // Otteniamo il percorso della nostra cartella Documents
-        guard let documentsURL = try? FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false) else {
-            print("❌ Impossibile accedere alla cartella Documents.")
-            return []
-        }
-        
-        do {
-            // 1. Otteniamo gli URL di tutti i file nella cartella
-            let fileURLs = try FileManager.default.contentsOfDirectory(at: documentsURL, includingPropertiesForKeys: [.contentModificationDateKey], options: [])
-            
-            // 2. Filtriamo per tenere solo i file .json e otteniamo la loro data di modifica
-            let jsonFiles = try fileURLs.compactMap { url -> (url: URL, modDate: Date)? in
-                // Filtra per estensione .json
-                guard url.pathExtension == "json" else {
-                    return nil
-                }
-                // Ottieni le proprietà del file, inclusa la data di modifica
-                let resources = try url.resourceValues(forKeys: [.contentModificationDateKey])
-                guard let modificationDate = resources.contentModificationDate else {
-                    return nil
-                }
-                return (url: url, modDate: modificationDate)
-            }
-            
-            // 3. Ordiniamo l'array per data, dalla più recente alla più vecchia
-            let sortedFiles = jsonFiles.sorted { $0.modDate > $1.modDate }
-            
-            // 4. Estraiamo solo i nomi dei file, rimuovendo l'estensione .json
-            var projectNames = sortedFiles.map { $0.url.deletingPathExtension().lastPathComponent }
-            
-            print("✅ Trovati progetti recenti: \(projectNames)")
-            projectNames = Array(projectNames.prefix(5))
-            return projectNames
-            
-        } catch {
-            print("❌ Errore durante la lettura dei file: \(error.localizedDescription)")
-            return []
-        }
+    /// Rimuove il riferimento a una PKCanvasView quando viene distrutta.
+    func unregisterCanvasView(forLayerID layerID: Int) {
+        canvasViews[layerID] = nil
     }
+    */
+    
 }
 
-
-extension EditorModel {
-     func createPopupMenu(){
-        // --- Sottomenu "File" ---
-        let saveAction = UIAction(title: "Save", image: nil) { _ in
-            EditorModel.shared.saveProject()
-        }
-        let saveAsAction = UIAction(title: "Save as...", image: nil) { _ in
-            EditorModel.shared.saveProjectAs = true
-        }
-        
-        let newAction = UIAction(title: "New", image: nil) { _ in
-            EditorModel.shared.newProject()
-        }
-        let loadAction = UIAction(title: "Open...", image: nil) { _ in
-            //EditorModel.shared.loadProject()
-            self.showDocPicker = true
-        }
-        
-        let recentActions = EditorModel.shared.recentProjects.map{ item in
-            let recentAction = UIAction(title: item, image: nil) { _ in
-                EditorModel.shared.loadProject(item )
-               
-            }
-            return recentAction
-        }
-         
-        let recentMenu = UIMenu(title: "Open recent", children: recentActions.reversed())
-       
-        let saveToGallery = UIAction(title: "Save to gallery", image: nil) { _ in
-            EditorModel.shared.exportToGallery()
-        }
-         
-         let exportAction = UIAction(title: "Export...", image: nil) { _ in
-             EditorModel.shared.exportToGallery()
-         }
-        
-        // Creiamo il sottomenu "File" con le azioni definite sopra
-        let fileMenu = UIMenu(title: "File", children: [newAction,loadAction,recentMenu, saveAction, saveAsAction,saveToGallery].reversed())
-        
-        // --- Sottomenu "Layers" ---
-        
-        
-        /*let newLayerAction = UIAction(title: "Add new", image: nil) { _ in
-         EditorModel.shared.addLayer()
-         }*/
-        
-        /*
-        let undoAction = UIAction(title: "Undo", image: nil) { _ in
-            
-            EditorModel.shared.undo()
-            
-        }
-        let redoAction = UIAction(title: "Redo", image: nil) { _ in
-            
-            EditorModel.shared.redo()
-            
-        }
-        
-         let textAction = UIAction(title: "Add text...", image: nil) { _ in
-             
-             EditorModel.shared.showTextInput = true
-             
-         }*/
-         
-        let zoomToFitAction = UIAction(title: "Zoom to fit", image: nil) { _ in
-            
-            EditorModel.shared.zoomToFit()
-            
-        }
-        
-        let editMenu = UIMenu(title: "Edit", children: [zoomToFitAction].reversed())
-        
-        // Creiamo il sottomenu "Layers"
-        //let layersMenu = UIMenu(title: "Layers", children: [newLayerAction, viewLayersAction].reversed())
-        let layersMenu = UIAction(title: "Layers", image: nil) { _ in
-            
-            EditorModel.shared.showLayerEditorDetail = true
-            
-        }
-        // --- Menu Principale e Bottone ---
-        
-        // Creiamo il menu principale che contiene i nostri due sottomenu
-        self.mainMenu = UIMenu(title: "", options: .displayInline, children: [fileMenu,editMenu,layersMenu].reversed())
-        
-       
-        // Assegniamo il bottone come accessoryItem del picker
-    }
-    
-    func addTextStroke(text: String, center: CGPoint) {
-        // 1. Trova l'indice del layer attivo.
-        guard let layerIndex = layers.firstIndex(where: { $0.id == activeCanvasId }) else {
-            print("Errore: Nessun layer attivo trovato per aggiungere il testo.")
-            return
-        }
-        let layer = layers[layerIndex]
-        // 2. Definisci i parametri per il tuo testo.
-        //    In futuro potrai renderli personalizzabili dall'utente.
-        //let font = UIFont.systemFont(ofSize: 80, weight: .bold)
-        let font = UIFont(name: "Impact", size: 80)!
-        //let font = UIFont(name: "Verdana", size: 19)!
-        
-        let color = textStampWrapper.toolItem.color
-        let width: CGFloat = 3.0
-        let scale: CGFloat = 1.0
-        
-        // 3. Convertiamo la posizione (che è un offset) in un punto centrale.
-        //    NOTA: Questo assume che la posizione iniziale della TextInput sia (0,0)
-        //    rispetto alla canvas. Potrebbe essere necessario un aggiustamento.
-        //let center = CGPoint(x: position.width, y: position.height)
-        //let center = CGPoint(x: 200, y: 130)
-    
-        // 4. Chiama il nostro convertitore per creare gli stroke.
-        let newStrokes = FontStrokeConverter.createStrokes(
-            fromText: text,
-            font: font,
-            at: center,
-            color: color,
-            width: width,
-            scale: scale
-        )
-        
-        guard !newStrokes.isEmpty else {
-            print("Conversione del testo in stroke non ha prodotto risultati.")
-            return
-        }
-        
-        if let canvas = layer.canvas {
-            let drawing1 = PKDrawing(strokes: newStrokes)
-            let newDrawing1 = canvas.drawing.appending(drawing1)
-            setNewDrawingUndoable(newDrawing1,to:canvas)
-        }
-        
-       
-    }
-    
-    func setNewDrawingUndoable(_ newDrawing: PKDrawing, to canvasView: PKCanvasView) {
-        Task{
-            let oldDrawing = canvasView.drawing
-            if let undoManager = canvasView.undoManager {
-                undoManager.registerUndo(withTarget: self) {
-                    
-                    $0.setNewDrawingUndoable(oldDrawing,to: canvasView)
-                }
-            }
-            canvasView.drawing = newDrawing
-        }
-    }
-    
-    func convertScreenPointToCanvasPoint(_ screenPoint: CGPoint, for layerID: Int) -> CGPoint? {
-        
-        // 1. Troviamo la canvas attiva dal nostro dizionario.
-        guard let canvas = canvasViews[layerID] as? PKCanvasView else {
-            print("Errore di conversione: Canvas non trovata per il layer \(layerID)")
-            return nil
-        }
-        
-        // 2. Troviamo la finestra dell'app, che rappresenta il sistema di coordinate "globali".
-        guard let window = canvas.window else {
-            print("Errore di conversione: Finestra della canvas non trovata.")
-            return nil
-        }
-        
-        // 3. Usiamo il metodo 'convert' di UIView.
-        //    Chiediamo alla nostra 'canvas' di convertire il 'screenPoint',
-        //    dicendogli che il punto di partenza proviene dal sistema di coordinate della 'finestra'.
-        let canvasPoint = canvas.convert(screenPoint, from: window)
-        
-        return canvasPoint
-    }
-}

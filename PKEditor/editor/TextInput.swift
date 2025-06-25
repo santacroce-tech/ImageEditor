@@ -22,7 +22,7 @@ struct TextInput: View {
             .multilineTextAlignment(.leading)
             .lineLimit(nil)
             .frame(minWidth:200, maxWidth: .infinity)
-            .padding(20)
+            .padding(5)
             .border(Color.accentColor, width: 2)
             .padding(20)
             .offset(

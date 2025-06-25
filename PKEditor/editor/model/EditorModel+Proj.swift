@@ -205,6 +205,12 @@ extension EditorModel {
             return []
         }
     }
+    
+    func publish(){
+        if let image = renderLayers() {
+            onPublish?(image)
+        }
+    }
 }
 
 

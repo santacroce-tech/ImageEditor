@@ -74,6 +74,18 @@ extension EditorModel {
         }
     }
     
+    func setBackgroundColor(){
+        for layer in self.layers {
+            layer.canvas!.backgroundColor = .clear
+            layer.canvas!.isOpaque = false
+        }
+        if layers.count > 0 && backgroundColor != .clear{
+            let layer = layers[0]
+            layer.canvas!.backgroundColor = backgroundColor
+            layer.canvas!.isOpaque = true
+        }
+    }
+    
     func convertScreenPointToCanvasPoint(_ screenPoint: CGPoint, for layerID: Int) -> CGPoint? {
         
         

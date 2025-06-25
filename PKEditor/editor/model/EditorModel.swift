@@ -44,20 +44,36 @@ class EditorModel: NSObject,ObservableObject {
     @Published var minimumZoomScale = 0.3
     @Published var maximumZoomScale = 5.0
     @Published var zoomScale: CGFloat = 1.0
-  
+    
     @Published var showFontPicker:Bool = false
     @Published var showFontSheet = false
-    @Published var currentFont: UIFont = UIFont.systemFont(ofSize: 24, weight: .bold)
-   
+    @Published var currentFont: UIFont = UIFont.systemFont(ofSize: 64, weight: .regular){
+        didSet {
+            saveFontToUserDefaults()
+        }
+    }
+    private let fontNameKey = "EditorCurrentFontName"
+    private let fontSizeKey = "EditorCurrentFontSize"
+    
+    
     //var canvasViews: [Int: PKCanvasView?] = [:]
     var recentProjects:[String] = []
     
     var toolPicker: PKToolPicker?
     var mainMenu:UIMenu!
-   
+    var onPublish: ((_ image:UIImage) -> Void)? = nil
+  
+    @Published var backgroundColor = UIColor.clear {
+        didSet {
+            setBackgroundColor()
+        }
+    }
+  
+    
     override init() {
         super.init()
         projectName = defProjectName
+        loadFontFromUserDefaults()
         addLayer()
         activeCanvasId = 1
         self.recentProjects = getRecentProjects()
@@ -176,6 +192,45 @@ class EditorModel: NSObject,ObservableObject {
         }
     }
     
+    func saveFontToUserDefaults() {
+        let fontToSave = self.currentFont
+        
+        // Otteniamo e salviamo le due proprietà semplici
+        let fontName = fontToSave.fontName
+        let fontSize = fontToSave.pointSize
+        
+        let defaults = UserDefaults.standard
+        defaults.set(fontName, forKey: fontNameKey)
+        defaults.set(fontSize, forKey: fontSizeKey)
+        
+        print("✅ Font salvato: \(fontName) @ \(fontSize)pt")
+    }
+    
+    // --- NUOVA FUNZIONE PER CARICARE IL FONT ---
+    
+    /// Carica il nome e la dimensione del font da UserDefaults e aggiorna la proprietà 'currentFont'.
+    func loadFontFromUserDefaults() {
+        let defaults = UserDefaults.standard
+        
+        // Leggiamo il nome, usando un font di sistema come valore di default se non c'è nulla
+        let savedName = defaults.string(forKey: fontNameKey) ?? UIFont.systemFont(ofSize: 48).fontName
+        
+        // Leggiamo la dimensione. Se la chiave non esiste, .double(forKey:) restituisce 0.
+        // Quindi controlliamo prima se esiste, altrimenti usiamo un default.
+        var savedSize: CGFloat
+        if defaults.object(forKey: fontSizeKey) != nil {
+            savedSize = defaults.double(forKey: fontSizeKey)
+        } else {
+            savedSize = 48.0
+        }
+        
+        // Ricreiamo l'oggetto UIFont.
+        // L'inizializzatore UIFont(name:size:) può fallire se il font non è più presente
+        // sul sistema, quindi forniamo un fallback per sicurezza.
+        self.currentFont = UIFont(name: savedName, size: savedSize) ?? .systemFont(ofSize: savedSize)
+        
+        print("✅ Font caricato: \(self.currentFont.fontName) @ \(self.currentFont.pointSize)pt")
+    }
     
 }
 

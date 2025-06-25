@@ -43,10 +43,11 @@ extension EditorModel {
             EditorModel.shared.exportToGallery()
         }
          
-         let exportAction = UIAction(title: "Export...", image: nil) { _ in
-             EditorModel.shared.exportToGallery()
-         }
+         
         
+         let publishAction = UIAction(title: "Publish...", image: nil) { _ in
+             EditorModel.shared.publish()
+         }
         // Creiamo il sottomenu "File" con le azioni definite sopra
         let fileMenu = UIMenu(title: "File", children: [newAction,loadAction,recentMenu, saveAction, saveAsAction,saveToGallery].reversed())
         

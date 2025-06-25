@@ -97,7 +97,12 @@ struct LayerCanvasView: UIViewRepresentable {
         canvasView.isOpaque = false
         canvasView.backgroundColor = .clear
         canvasView.delegate = context.coordinator
-        canvasView.contentSize = EditorModel.shared.contentSize //CGSize(width: 2000, height: 2000)
+        canvasView.contentSize = EditorModel.shared.contentSize
+        canvasView.contentOffset = EditorModel.shared.contentOffset //CGSize(width: 2000, height: 2000)
+        
+        canvasView.bounces = false
+        canvasView.alwaysBounceVertical = false
+        canvasView.alwaysBounceHorizontal = false
         
         canvasView.minimumZoomScale = EditorModel.shared.minimumZoomScale
         canvasView.maximumZoomScale = EditorModel.shared.maximumZoomScale

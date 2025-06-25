@@ -52,8 +52,12 @@ struct LayersListView: View {
     /// Aggiorna direttamente l'ordine nell'array del modello.
     private func moveLayer(from source: IndexSet, to destination: Int) {
         model.layers.move(fromOffsets: source, toOffset: destination)
+        model.setBackgroundColor()
     }
     private func deleteLayer(at offsets: IndexSet) { // <-- 2. AGGIUNGI QUESTA FUNZIONE
-        model.layers.remove(atOffsets: offsets)
+        if model.layers.count > 1 {
+            model.layers.remove(atOffsets: offsets)
+            model.setBackgroundColor()
+        }
     }
 }

@@ -14,7 +14,7 @@ import PhotosUI
 //https://stackoverflow.com/questions/70274330/how-do-i-create-a-pkdrawing-programmatically-from-cgpoints/70274331#70274331
 //https://gemini.google.com/share/6d0c61a34ebf
 
-struct ContentView: View {
+struct EditorView: View {
     @StateObject var model = EditorModel.shared
     //@AppStorage("lastToolPickerState")
     //private var storedToolPickerStateData: Data?
@@ -24,9 +24,8 @@ struct ContentView: View {
     @State var selectedPhoto: PhotosPickerItem?
     @State var projectName = ""
     
+     
     
-    
-   
     var body: some View {
         VStack(spacing: 0) {
             ZStack {
@@ -46,7 +45,7 @@ struct ContentView: View {
                     .zIndex(Double(index))
                 }
                 if model.showTextInput {
-                   TextInput()
+                    TextInput().zIndex(Double(model.layers.count+1))
                 }
             }
             //.padding(20.0)
@@ -59,6 +58,7 @@ struct ContentView: View {
                  toolPickerState = loadedState
                  }
                  }*/
+                model.setBackgroundColor()
             }
             .onDisappear {
                 // Save current state to UserDefaults

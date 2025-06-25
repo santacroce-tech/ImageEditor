@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		1ABABCCC2DFDC4BF004E4C53 /* SVGKit in Frameworks */ = {isa = PBXBuildFile; productRef = 1ABABCCB2DFDC4BF004E4C53 /* SVGKit */; };
 		1ABABCCE2DFDC4BF004E4C53 /* SVGKitSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 1ABABCCD2DFDC4BF004E4C53 /* SVGKitSwift */; };
-		1ABC8E512E09F6CE00312615 /* SUIFontPicker in Frameworks */ = {isa = PBXBuildFile; productRef = 1ABC8E502E09F6CE00312615 /* SUIFontPicker */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -44,7 +43,6 @@
 			files = (
 				1ABABCCE2DFDC4BF004E4C53 /* SVGKitSwift in Frameworks */,
 				1ABABCCC2DFDC4BF004E4C53 /* SVGKit in Frameworks */,
-				1ABC8E512E09F6CE00312615 /* SUIFontPicker in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -89,7 +87,6 @@
 			packageProductDependencies = (
 				1ABABCCB2DFDC4BF004E4C53 /* SVGKit */,
 				1ABABCCD2DFDC4BF004E4C53 /* SVGKitSwift */,
-				1ABC8E502E09F6CE00312615 /* SUIFontPicker */,
 			);
 			productName = PKEditor;
 			productReference = 1ABABC612DFA342B004E4C53 /* PKEditor.app */;
@@ -121,7 +118,6 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				1ABABCCA2DFDC4BF004E4C53 /* XCRemoteSwiftPackageReference "SVGKit" */,
-				1ABC8E4F2E09F6CE00312615 /* XCRemoteSwiftPackageReference "SUIFontPicker" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 1ABABC622DFA342B004E4C53 /* Products */;
@@ -365,14 +361,6 @@
 				minimumVersion = 3.0.0;
 			};
 		};
-		1ABC8E4F2E09F6CE00312615 /* XCRemoteSwiftPackageReference "SUIFontPicker" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/SwapnanilDhol/SUIFontPicker";
-			requirement = {
-				branch = main;
-				kind = branch;
-			};
-		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -385,11 +373,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 1ABABCCA2DFDC4BF004E4C53 /* XCRemoteSwiftPackageReference "SVGKit" */;
 			productName = SVGKitSwift;
-		};
-		1ABC8E502E09F6CE00312615 /* SUIFontPicker */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 1ABC8E4F2E09F6CE00312615 /* XCRemoteSwiftPackageReference "SUIFontPicker" */;
-			productName = SUIFontPicker;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

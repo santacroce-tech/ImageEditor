@@ -7,7 +7,7 @@ A tap gesture recognizer customized for the animal stamp.
 
 import UIKit
 
-class StampGestureRecognizer: UITapGestureRecognizer {
+class CanvasGestureRecognizer: UITapGestureRecognizer {
     
     override init(target: Any?, action: Selector?) {
         super.init(target: target, action: action)

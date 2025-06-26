@@ -20,55 +20,54 @@ import UIKit
 @MainActor
 class EditorModel: NSObject,ObservableObject {
     static let shared = EditorModel()
+    let defProjectName: String = "drawingProject"
+    
     @Published var layers: [LayerCanvasModel] = []
     @Published var shapeStampWrapper = ShapeStampWrapper()
     @Published var textStampWrapper = TextStampWrapper()
     @Published var projectID = UUID()
-    
-    private var cancellables = Set<AnyCancellable>()
-    @Published var defProjectName: String = "drawingProject"
     @Published var projectName: String = ""
     
-    @Published var isShowingAccessorySheet: Bool = false
+    @Published var showAccessorySheet: Bool = false
     @Published var showPhotoPicker = false
     @Published var showDocPicker = false
     @Published var showTextInput = false
     @Published var saveProjectAs: Bool = false
     @Published var showLayerEditorDetail: Bool = false
-    
-    @Published var activeCanvasId: Int = 1
-    
-    @Published var contentOffset: CGPoint = .zero
-    //@Published var contentSize: CGSize = .zero
-    @Published var contentSize: CGSize = CGSize(width: 1000, height: 1000)
-    @Published var minimumZoomScale = 0.3
-    @Published var maximumZoomScale = 5.0
-    @Published var zoomScale: CGFloat = 1.0
-    
     @Published var showFontPicker:Bool = false
     @Published var showFontSheet = false
+    @Published var activeCanvasId: Int = 1
+    @Published var contentSize: CGSize = CGSize(width: 1000, height: 1000)
     @Published var currentFont: UIFont = UIFont.systemFont(ofSize: 64, weight: .regular){
         didSet {
             saveFontToUserDefaults()
         }
     }
+    @Published var backgroundColor = UIColor.clear {
+        didSet {
+            setBackgroundColor()
+        }
+    }
+    
+    var contentOffset: CGPoint = .zero
+    var zoomScale: CGFloat = 1.0
+    let minimumZoomScale = 0.33333
+    let maximumZoomScale = 3.0
+    //let minimumZoomScale = 1.0
+    //let maximumZoomScale = 1.0
+ 
     private let fontNameKey = "EditorCurrentFontName"
     private let fontSizeKey = "EditorCurrentFontSize"
-    
-    
-    //var canvasViews: [Int: PKCanvasView?] = [:]
+  
     var recentProjects:[String] = []
     
     var toolPicker: PKToolPicker?
     var mainMenu:UIMenu!
     var onPublish: ((_ image:UIImage) -> Void)? = nil
   
-    @Published var backgroundColor = UIColor.clear {
-        didSet {
-            setBackgroundColor()
-        }
-    }
-  
+    //@Published
+    var selectedStroke: PKStroke? = nil
+    var locationInDrawing : CGPoint = .zero
     
     override init() {
         super.init()
@@ -88,30 +87,6 @@ class EditorModel: NSObject,ObservableObject {
         let layer = LayerCanvasModel(currentCanvasId: canvasId)
         layers.append(layer)
         activeCanvasId = canvasId
-    }
-    
-    func rotateLastStroke(for layerID: Int, byDegrees degrees: Double) {
-        
-        guard let layerIndex = layers.firstIndex(where: { $0.id == layerID }) else { return }
-        var drawing = layers[layerIndex].drawing
-        
-        // Questa volta prendiamo solo il riferimento all'ultimo stroke
-        guard let lastStroke = drawing.strokes.last else {
-            print("Nessuno stroke da ruotare.")
-            return
-        }
-        
-        let lastStrokeBounds = lastStroke.renderBounds
-        let center = CGPoint(x: lastStrokeBounds.midX, y: lastStrokeBounds.midY)
-        
-        var transform = CGAffineTransform.identity
-        transform = transform.translatedBy(x: center.x, y: center.y)
-        transform = transform.rotated(by: CGFloat(degrees) * .pi / 180.0)
-        transform = transform.translatedBy(x: -center.x, y: -center.y)
-        
-        drawing.transform(using:transform)
-        layers[layerIndex].drawing = drawing
-        
     }
     
     

@@ -28,37 +28,49 @@ struct EditorView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            ZStack {
-                //Color.gray.opacity(0.1).ignoresSafeArea()
-                Color(uiColor: UIColor.systemBackground).opacity(1.0)
-                    .ignoresSafeArea()
-                
-              
-                ForEach(Array(model.layers.enumerated()), id: \.element.id) { index, layer in
-                    LayerContainerView(
-                        layer: layer,
-                        activeCanvas: $model.activeCanvasId,
-                        sharedOffset:$model.contentOffset
+            GeometryReader { geometry in
+                ZStack {
+                    //Color.gray.opacity(0.1).ignoresSafeArea()
+                    Color(uiColor: UIColor.systemBackground).opacity(1.0)
+                        .ignoresSafeArea()
+                    
+                    
+                    ForEach(Array(model.layers.enumerated()), id: \.element.id) { index, layer in
+                        LayerContainerView(
+                            layer: layer,
+                            activeCanvas: $model.activeCanvasId,
+                            sharedOffset:$model.contentOffset
+                            
+                        )
+                        .allowsHitTesting(model.activeCanvasId == layer.currentCanvasId)
+                        .zIndex(Double(index))
+                    }.onAppear {
+                        model.setBackgroundColor()
+                    }
+                    
+                  
+                    
+                    if model.showTextInput {
                         
-                    )
-                    .allowsHitTesting(model.activeCanvasId == layer.currentCanvasId)
-                    .zIndex(Double(index))
+                        TextInput().zIndex(Double(model.layers.count+1))
+                        
+                        EditingActionsPanel(
+                            onRotateLeft: {
+                                // Call the model's function for the active layer
+                                model.rotateDrawing( byDegrees: -5)
+                            },
+                            onRotateRight: {
+                                model.rotateDrawing( byDegrees: 5)
+                            }
+                        )
+                        .padding(.top, 10)
+                        .padding(.trailing, 10)
+                        .frame(maxWidth:.infinity,maxHeight:.infinity,alignment:.topTrailing)// Add some space from the top edge
+                    }
                 }
-                if model.showTextInput {
-                    TextInput().zIndex(Double(model.layers.count+1))
-                }
-            }
-            //.padding(20.0)
-            .background(Color.gray)
-            .id(model.projectID)
-            .onAppear {
-                //model.undoManager = undoManager
-                /*if let data = storedToolPickerStateData {
-                 if let loadedState = try? JSONDecoder().decode(ToolPickerState.self, from: data) {
-                 toolPickerState = loadedState
-                 }
-                 }*/
-                model.setBackgroundColor()
+                
+                .background(Color.gray)
+                .id(model.projectID)
             }
             .onDisappear {
                 // Save current state to UserDefaults
@@ -83,7 +95,7 @@ struct EditorView: View {
             .sheet(isPresented: $model.showLayerEditorDetail){
                 LayersListView(activeCanvas: $model.activeCanvasId)
             }
-            .sheet(isPresented: $model.isShowingAccessorySheet) {
+            .sheet(isPresented: $model.showAccessorySheet) {
                 EmptyView()
             }
             .alert("Save project as".localize,isPresented: $model.saveProjectAs) {

@@ -76,13 +76,18 @@ extension EditorModel {
     
     func setBackgroundColor(){
         for layer in self.layers {
-            layer.canvas!.backgroundColor = .clear
-            layer.canvas!.isOpaque = false
+            if let canvas = layer.canvas {
+                canvas.backgroundColor = .clear
+                canvas.isOpaque = false
+            }
         }
         if layers.count > 0 && backgroundColor != .clear{
             let layer = layers[0]
-            layer.canvas!.backgroundColor = backgroundColor
-            layer.canvas!.isOpaque = true
+            if let canvas = layer.canvas {
+                canvas.backgroundColor = backgroundColor
+                canvas.isOpaque = backgroundColor != .clear
+            }
+           
         }
     }
     
@@ -113,4 +118,55 @@ extension EditorModel {
         
         return canvasPoint
     }
+    
+    func rotateDrawing(byDegrees degrees: Double) {
+        
+        guard let layer = layers.first(where: { $0.id == activeCanvasId }) else { return }
+        var drawing = layer.canvas!.drawing
+        
+        // Questa volta prendiamo solo il riferimento all'ultimo stroke
+        guard let lastStroke = drawing.strokes.last else {
+            print("Nessuno stroke da ruotare.")
+            return
+        }
+        
+        let lastStrokeBounds = lastStroke.renderBounds
+        let center = CGPoint(x: lastStrokeBounds.midX, y: lastStrokeBounds.midY)
+        
+        var transform = CGAffineTransform.identity
+        transform = transform.translatedBy(x: center.x, y: center.y)
+        transform = transform.rotated(by: CGFloat(degrees) * .pi / 180.0)
+        transform = transform.translatedBy(x: -center.x, y: -center.y)
+        
+        drawing.transform(using:transform)
+        
+        if let canvas = layer.canvas {
+            setNewDrawingUndoable(drawing,to:canvas)
+        }
+   
+        //layers[layerIndex].drawing = drawing
+        
+    }
+    
+    /// Directly sets the contentOffset on all other canvases.
+        func propagateScrollOffset(_ offset: CGPoint, from sourceLayerID: Int) {
+            // We iterate through our main source of truth: the layers array.
+            for layer in layers {
+                // We only update the canvases that are NOT the source of the scroll.
+                if layer.id != sourceLayerID {
+                    // Access the canvas directly from the layer model.
+                    layer.canvas?.contentOffset = offset
+                }
+            }
+        }
+        
+        /// Directly sets the zoomScale on all other canvases.
+        func propagateZoomScale(_ scale: CGFloat, from sourceLayerID: Int) {
+            for layer in layers {
+                if layer.id != sourceLayerID {
+                    layer.canvas?.zoomScale = scale
+                }
+            }
+        }
+        
 }

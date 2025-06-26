@@ -12,7 +12,7 @@ import SVGKit
 
 
 struct LayerCanvasView: UIViewRepresentable {
-   
+    
     @Binding var activeCanvasId: Int
     //@Binding var toolPickerState: ToolPickerState
     @Binding var sharedOffset: CGPoint
@@ -24,7 +24,7 @@ struct LayerCanvasView: UIViewRepresentable {
     init(model:LayerCanvasModel, activeCanvasId: Binding<Int>,  sharedOffset: Binding<CGPoint>) {
         self.model = model
         print("cpu initcpu")
-       //self.currentCanvasId = currentCanvasId
+        //self.currentCanvasId = currentCanvasId
         _activeCanvasId = activeCanvasId
         //_toolPickerState = toolPickerState
         _sharedOffset = sharedOffset
@@ -89,7 +89,7 @@ struct LayerCanvasView: UIViewRepresentable {
     func makeUIView(context: Context) -> PKCanvasView {
         
         print("cpu makeUIView")
-     
+        
         let canvasView = PKCanvasView()
         canvasView.drawing = model.drawing
         //canvasView.drawingPolicy = .anyInput
@@ -158,7 +158,7 @@ struct LayerCanvasView: UIViewRepresentable {
          canvasView.addSubview(debugView)
          */
         //EditorModel.shared.registerCanvasView(canvasView, forLayerID: model.id)
-
+        
         return canvasView
     }
     
@@ -177,8 +177,8 @@ struct LayerCanvasView: UIViewRepresentable {
             // This canvas should be active: make its local tool picker visible
             
             /*if EditorModel.shared.activeUndoManager !== uiView.undoManager {
-                        EditorModel.shared.setActiveUndoManager(uiView.undoManager)
-                    }*/
+             EditorModel.shared.setActiveUndoManager(uiView.undoManager)
+             }*/
             
             DispatchQueue.main.async{
                 localToolPicker.setVisible(true, forFirstResponder: uiView)
@@ -218,7 +218,7 @@ struct LayerCanvasView: UIViewRepresentable {
         // Also hide it, as it might have been the active one before being dismantled
         coordinator.parent.localToolPicker.setVisible(false, forFirstResponder: uiView)
         uiView.resignFirstResponder()
-  
+        
     }
     
     
@@ -248,8 +248,10 @@ struct LayerCanvasView: UIViewRepresentable {
     class Coordinator: NSObject {
         var parent: LayerCanvasView
         
+        private var handlesHostingController: UIHostingController<EditingHandlesView>?
+      
         // --- MODIFICA 1: Usa opzionali standard (?) invece di impliciti (!) ---
-        var stampGestureRecognizer: StampGestureRecognizer?
+        var tapGestureRecognizer: CanvasGestureRecognizer?
         var stampHoverGestureRecognizer: UIHoverGestureRecognizer?
         private var hoverPreviewView: UIView?
         
@@ -294,71 +296,85 @@ struct LayerCanvasView: UIViewRepresentable {
 
 
 extension LayerCanvasView.Coordinator {
+    
+    
+   
     func setUpGestureRecognizers(on view: UIView) {
-        stampGestureRecognizer = StampGestureRecognizer(target: self, action: #selector(handleTap(_:)))
-        view.addGestureRecognizer(stampGestureRecognizer!)
+        tapGestureRecognizer = CanvasGestureRecognizer(target: self, action: #selector(handleTap(_:)))
+        view.addGestureRecognizer(tapGestureRecognizer!)
         
         // Aggiungi qui anche l'hover gesture recognizer se lo usi
     }
     
-    @MainActor @objc func handleTap(_ sender: StampGestureRecognizer) {
+    @MainActor @objc func handleTap(_ sender: CanvasGestureRecognizer) {
         guard let canvasView = sender.view as? PKCanvasView else { return }
         
         let location = sender.location(in: canvasView)
         
-        let stampWrapper = EditorModel.shared.shapeStampWrapper
+        let locationInDrawing = CGPoint(
+                x: (location.x) / canvasView.zoomScale,
+                y: (location.y) / canvasView.zoomScale
+            )
         
-        let stampToolIdentifier = EditorModel.shared.shapeStampWrapper.toolItem.identifier
-      
+        let shapeWrapper = EditorModel.shared.shapeStampWrapper
+        
+        let shapeToolIdentifier = EditorModel.shared.shapeStampWrapper.toolItem.identifier
+        
         let textToolIdentifier = EditorModel.shared.textStampWrapper.toolItem.identifier
-      
+        
         // 2. Otteniamo l'identificatore dello strumento attualmente selezionato nel picker.
         let selectedIdentifier = EditorModel.shared.toolPicker!.selectedToolItemIdentifier
         
         // 3. Confrontiamo i due identificatori.
         let isTextToolSelected = (selectedIdentifier == textToolIdentifier)
         if isTextToolSelected {
+            EditorModel.shared.locationInDrawing = locationInDrawing
             EditorModel.shared.showTextInput.toggle()
         }
         
-        let isStampToolSelected = (selectedIdentifier == stampToolIdentifier)
-        if isStampToolSelected {
-            let selectedAttribute = stampWrapper.attributeViewController.attributeModel.selectedAttribute
+        if let tappedStroke = canvasView.drawing.strokes.last(where: { $0.renderBounds.contains(locationInDrawing) }) {
+            EditorModel.shared.selectedStroke = tappedStroke
+            print("✅ Stroke selezionato con ID: \(tappedStroke)")
+            updateHandlesOverlay(for: canvasView)
+            return
+        } else {
+            EditorModel.shared.selectedStroke = nil
+            updateHandlesOverlay(for: canvasView)
+            print("Deselezionato.")
+        }
+        
+        let isShapeToolSelected = (selectedIdentifier == shapeToolIdentifier)
+        if isShapeToolSelected {
+            let selectedAttribute = shapeWrapper.attributeViewController.attributeModel.selectedAttribute
             
             let svgName = "\(selectedAttribute.name).svg"
-            let color = stampWrapper.toolItem.color
-            let width = stampWrapper.toolItem.width
-            let scale = stampWrapper.toolItem.width - 2.0
+            let color = shapeWrapper.toolItem.color
+            let width = shapeWrapper.toolItem.width
+            let scale = shapeWrapper.toolItem.width - 2.0
             
-            print("Uso: SVG=\(svgName), Colore=\(color.description), Spessore=\(width)")
+            //print("Uso: SVG=\(svgName), Colore=\(color.description), Spessore=\(width)")
             
-            
-            let newStrokes = SVGStrokeConverter.createStrokes(fromSVGNamed: svgName, at: location, color: color, width: width, scale: scale)
+            let newStrokes = SVGStrokeConverter.createStrokes(fromSVGNamed: svgName, at: locationInDrawing, color: color, width: width, scale: scale)
             
             let drawing = PKDrawing(strokes: newStrokes)
             let newDrawing = canvasView.drawing.appending(drawing)
             EditorModel.shared.setNewDrawingUndoable(newDrawing,to:canvasView)
         }
-  
+        
+      
+         
+       
+        
+      
         /*if let imageView = EditorModel.shared.animalStampWrapper.stampImageView(for: sender.location(in: canvasView), angleInRadians: sender.angleInRadians) {
          // Aggiungiamo l'immagine direttamente come subview della canvas
          canvasView.addSubview(imageView)
          //insertImageViewUndoable(newDrawing,to:canvasView)
          }*/
         
-         //UIFont.systemFont(ofSize: 60)
-         
-        //let font = UIFont(name: "Helvetica-Light", size: 19)!
-        //let font = UIFont(name: "Impact", size: 19)!
-        //let font = UIFont(name: "Verdana", size: 19)!
-         /*
-         let newFontStrokes = FontStrokeConverter.createStrokes(fromText: "Hello TEXT!",font:font, at: location, color: color, width: 3, scale:scale)
-         
-         let drawing1 = PKDrawing(strokes: newFontStrokes)
-         let newDrawing1 = canvasView.drawing.appending(drawing1)
-         setNewDrawingUndoable(newDrawing1,to:canvasView)
-        */
+       
     }
+    
     
     private func insertImageViewUndoable(_ imageView: UIImageView) {
         /*undoManager?.registerUndo(withTarget: self) {
@@ -367,32 +383,65 @@ extension LayerCanvasView.Coordinator {
         //canvasView.addSubview(imageView)
     }
     
-   
+    
 }
 
 
 // MARK: - PencilKit Delegates
 extension LayerCanvasView.Coordinator: PKCanvasViewDelegate, PKToolPickerObserver {
     
-    func scrollViewDidZoom(_ scrollView: UIScrollView) {
-       // La logica è identica a quella per lo scroll.
-       let isActive = parent.model.id == parent.activeCanvasId
-       
-       if isActive {
-           // Se è la tela attiva, aggiorniamo lo zoom condiviso nel nostro modello.
-           EditorModel.shared.zoomScale = scrollView.zoomScale
-       }
-   }
+    @MainActor
+    private func updateHandlesOverlay(for canvasView: PKCanvasView) {
+        // Prima rimuoviamo sempre la vecchia vista
+        handlesHostingController?.view.removeFromSuperview()
+        handlesHostingController = nil
+      
+        if let selectedStroke = EditorModel.shared.selectedStroke {
+            let strokeBounds = selectedStroke.renderBounds
+            let zoom = canvasView.zoomScale
+            let scaledSize = CGSize(width: strokeBounds.width * zoom, height: strokeBounds.height * zoom)
+            
+            let finalOrigin = CGPoint(x: strokeBounds.origin.x * zoom, y: strokeBounds.origin.y * zoom)
+            
+            let finalFrame = CGRect(origin: finalOrigin, size: scaledSize)
+            let handlesView = EditingHandlesView(frame: CGRect(origin: .zero, size: finalFrame.size))
+            let hostingController = UIHostingController(rootView: handlesView)
+            
+            hostingController.view.frame = finalFrame
+            hostingController.view.backgroundColor = .clear
+            
+            canvasView.addSubview(hostingController.view)
+            
+            self.handlesHostingController = hostingController
+        }
+    }
     
-    func scrollViewDidScroll(_ scrollView: UIScrollView) {
-        // Controlliamo se questa è la tela attiva.
-        // Vogliamo che solo la tela attiva "guidi" lo scorrimento di tutte le altre.
+    func scrollViewDidZoom(_ scrollView: UIScrollView) {
+        guard parent.model.id == parent.activeCanvasId,
+              let canvasView = scrollView as? PKCanvasView else { return }
+        
+        
         let isActive = parent.model.id == parent.activeCanvasId
         
         if isActive {
-            // Se è la tela attiva, aggiorniamo l'offset condiviso nel nostro modello.
+            EditorModel.shared.zoomScale = scrollView.zoomScale
+            EditorModel.shared.propagateZoomScale(scrollView.zoomScale, from: parent.model.id)
+            updateHandlesOverlay(for: canvasView)
+        }
+    }
+    
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+         guard parent.model.id == parent.activeCanvasId else { return }
+        
+        //,let canvasView = scrollView as? PKCanvasView
+        
+        let isActive = parent.model.id == parent.activeCanvasId
+        
+        if isActive {
             Task{
                 EditorModel.shared.contentOffset = scrollView.contentOffset
+                EditorModel.shared.propagateScrollOffset(scrollView.contentOffset, from: parent.model.id)
+                //updateHandlesOverlay(for: canvasView)
             }
         }
     }
@@ -408,12 +457,12 @@ extension LayerCanvasView.Coordinator: PKCanvasViewDelegate, PKToolPickerObserve
     }
     
     func canvasViewDidEndUsingTool(_ canvasView: PKCanvasView) {
-            // Questo è il momento giusto per notificare al resto dell'app
-            // che è avvenuta una modifica "permanente".
-            // La nostra funzione di notifica globale è perfetta per questo.
-            //EditorModel.shared.notifyLayerDidChange()
+        // Questo è il momento giusto per notificare al resto dell'app
+        // che è avvenuta una modifica "permanente".
+        // La nostra funzione di notifica globale è perfetta per questo.
+        //EditorModel.shared.notifyLayerDidChange()
         //print("Tratto finalizzato. Notifica inviata per aggiornare i thumbnail.")
-        }
+    }
     
     // Questo metodo viene chiamato OGNI VOLTA che cambi strumento.
     func toolPickerSelectedToolItemDidChange(_ toolPicker: PKToolPicker) {
@@ -424,28 +473,21 @@ extension LayerCanvasView.Coordinator: PKCanvasViewDelegate, PKToolPickerObserve
     // Questa è la funzione chiave, ora implementata correttamente.
     @MainActor func updateGestureRecognizerEnablement(using toolPicker: PKToolPicker) {
         
-        // 1. Otteniamo l'identificatore del nostro strumento Timbro dal modello.
-        //    Questo è l'identificatore "corretto" che stiamo cercando.
-        let stampToolIdentifier = EditorModel.shared.shapeStampWrapper.toolItem.identifier
+        let shapeToolIdentifier = EditorModel.shared.shapeStampWrapper.toolItem.identifier
         let textToolIdentifier = EditorModel.shared.textStampWrapper.toolItem.identifier
-      
+        
         // 2. Otteniamo l'identificatore dello strumento attualmente selezionato nel picker.
         let selectedIdentifier = toolPicker.selectedToolItemIdentifier
         
         // 3. Confrontiamo i due identificatori.
-        let isStampToolSelected = (selectedIdentifier == stampToolIdentifier)
+        let isShapeToolSelected = (selectedIdentifier == shapeToolIdentifier)
         let isTextToolSelected = (selectedIdentifier == textToolIdentifier)
-     
+        
         // 4. Abilitiamo o disabilitiamo il nostro gesture recognizer di conseguenza.
-        stampGestureRecognizer?.isEnabled = isStampToolSelected || isTextToolSelected
-        DispatchQueue.main.async{
-            if isTextToolSelected {
-                EditorModel.shared.showTextInput = true
-            }
-            
-        }
+        tapGestureRecognizer?.isEnabled = isShapeToolSelected || isTextToolSelected
+        
         // Aggiungiamo un print di debug per vedere cosa sta succedendo
-        if isStampToolSelected {
+        if isShapeToolSelected {
             print("Strumento Timbro ATTIVATO. HandleTap ora funzionerà.")
         } else {
             print("Strumento Timbro DISATTIVATO. HandleTap è disabilitato.")
@@ -456,5 +498,3 @@ extension LayerCanvasView.Coordinator: PKCanvasViewDelegate, PKToolPickerObserve
     func toolPickerIsRulerActiveDidChange(_ toolPicker: PKToolPicker) {}
 }
 
-extension LayerCanvasView {
-}

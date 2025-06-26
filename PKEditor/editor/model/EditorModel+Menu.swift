@@ -82,7 +82,14 @@ extension EditorModel {
              EditorModel.shared.zoomTo1of1()
              
          }
-        let editMenu = UIMenu(title: "Edit", children: [zoomToFitAction,zoomTo1].reversed())
+         
+         let roteteLeftAction = UIAction(title: "Rotate left", image: nil) { _ in
+             EditorModel.shared.rotateDrawing( byDegrees: -5)
+         }
+         let roteteRightAction = UIAction(title: "Rotate right", image: nil) { _ in
+             EditorModel.shared.rotateDrawing( byDegrees: +5)
+         }
+        let editMenu = UIMenu(title: "Edit", children: [zoomToFitAction,zoomTo1,roteteLeftAction,roteteRightAction].reversed())
         
         // Creiamo il sottomenu "Layers"
         //let layersMenu = UIMenu(title: "Layers", children: [newLayerAction, viewLayersAction].reversed())

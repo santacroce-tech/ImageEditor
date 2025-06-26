@@ -10,12 +10,14 @@ import SwiftUI
 import PencilKit
 
 struct LayerContainerView: View {
+    let index:Int
     @ObservedObject var layer: LayerCanvasModel // Osserva direttamente il layer
     @Binding var activeCanvas: Int
     //@Binding var toolPickerState: ToolPickerState
     @Binding var sharedOffset: CGPoint
     var body: some View {
         LayerCanvasView(
+            index:index,
             model: layer,
             activeCanvasId: $activeCanvas,
             //toolPickerState: $toolPickerState,

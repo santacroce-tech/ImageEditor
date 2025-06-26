@@ -24,7 +24,23 @@ struct EditorView: View {
     @State var selectedPhoto: PhotosPickerItem?
     @State var projectName = ""
     
-     
+    private var textInputPosition: CGPoint {
+        // 1. Prendi i valori correnti dal modello
+        let locationInDrawing = model.locationInDrawing
+        let zoomScale = model.zoomScale
+        let contentOffset = model.contentOffset
+
+        // 2. Applica la trasformazione: prima la scala, poi l'offset
+        let scaledX = locationInDrawing.x * zoomScale
+        let scaledY = locationInDrawing.y * zoomScale
+
+        let finalX = scaledX - contentOffset.x
+        let finalY = scaledY - contentOffset.y
+
+        // 3. Ritorna la coordinata finale per lo schermo
+        return CGPoint(x: finalX, y: finalY)
+    }
+ 
     
     var body: some View {
         VStack(spacing: 0) {
@@ -35,8 +51,10 @@ struct EditorView: View {
                         .ignoresSafeArea()
                     
                     
+                    
                     ForEach(Array(model.layers.enumerated()), id: \.element.id) { index, layer in
                         LayerContainerView(
+                            index:index,
                             layer: layer,
                             activeCanvas: $model.activeCanvasId,
                             sharedOffset:$model.contentOffset
@@ -45,27 +63,33 @@ struct EditorView: View {
                         .allowsHitTesting(model.activeCanvasId == layer.currentCanvasId)
                         .zIndex(Double(index))
                     }.onAppear {
-                        model.setBackgroundColor()
+                        //model.setBackgroundColor()
                     }
                     
+                    EditingActionsPanel(
+                        onRotateLeft: {
+                            // Call the model's function for the active layer
+                            model.rotateDrawing( byDegrees: -5)
+                        },
+                        onRotateRight: {
+                            model.rotateDrawing( byDegrees: 5)
+                        }
+                    )
+                    .padding(.top, 10)
+                    .padding(.trailing, 10)
                   
+                  
+                    .frame(maxWidth:.infinity,maxHeight:.infinity,alignment:.topTrailing)// Add some space from the top edge
+                    //.zIndex(1000)
+                    
                     
                     if model.showTextInput {
                         
-                        TextInput().zIndex(Double(model.layers.count+1))
+                        TextInput()
+                            .position(textInputPosition)
+                            .zIndex(Double(model.layers.count+1))
                         
-                        EditingActionsPanel(
-                            onRotateLeft: {
-                                // Call the model's function for the active layer
-                                model.rotateDrawing( byDegrees: -5)
-                            },
-                            onRotateRight: {
-                                model.rotateDrawing( byDegrees: 5)
-                            }
-                        )
-                        .padding(.top, 10)
-                        .padding(.trailing, 10)
-                        .frame(maxWidth:.infinity,maxHeight:.infinity,alignment:.topTrailing)// Add some space from the top edge
+                     
                     }
                 }
                 

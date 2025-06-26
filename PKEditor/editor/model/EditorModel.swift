@@ -43,11 +43,12 @@ class EditorModel: NSObject,ObservableObject {
             saveFontToUserDefaults()
         }
     }
-    @Published var backgroundColor = UIColor.clear {
+    @Published var backgroundColor = UIColor.clear
+    /*{
         didSet {
             setBackgroundColor()
         }
-    }
+    }*/
     
     var contentOffset: CGPoint = .zero
     var zoomScale: CGFloat = 1.0
@@ -65,8 +66,7 @@ class EditorModel: NSObject,ObservableObject {
     var mainMenu:UIMenu!
     var onPublish: ((_ image:UIImage) -> Void)? = nil
   
-    //@Published
-    var selectedStroke: PKStroke? = nil
+    @Published var selectedStroke: PKStroke? = nil
     var locationInDrawing : CGPoint = .zero
     
     override init() {

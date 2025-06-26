@@ -131,7 +131,7 @@ extension EditorModel {
         self.projectID = UUID()
         contentOffset = .zero
         showTextInput = false
-        
+        backgroundColor = .white
         
     }
     
@@ -156,7 +156,8 @@ extension EditorModel {
             self.contentSize = loadedProject.contentSize
             self.contentOffset = loadedProject.contentOffset
             self.layers = loadedProject.layers
-           
+            self.backgroundColor = loadedProject.backgroundColor
+                 
             contentOffset = .zero
             
             activeCanvasId = 1

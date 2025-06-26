@@ -11,7 +11,6 @@ import PencilKit
 
 
 class LayerCanvasModel:ObservableObject,Identifiable, Codable {
-    
     @Published var visible = true
     @Published var opacity = 1.0
     @Published var currentCanvasId: Int 

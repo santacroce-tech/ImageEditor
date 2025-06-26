@@ -55,24 +55,30 @@ extension EditorModel {
         if let canvas = layer.canvas {
             let drawing1 = PKDrawing(strokes: newStrokes)
             let newDrawing1 = canvas.drawing.appending(drawing1)
-            setNewDrawingUndoable(newDrawing1,to:canvas)
+            Task { @MainActor in
+                setNewDrawingUndoable(newDrawing1,to:canvas)
+            }
         }
-        
-       
     }
     
+    
+    @MainActor
     func setNewDrawingUndoable(_ newDrawing: PKDrawing, to canvasView: PKCanvasView) {
-        Task{
-            let oldDrawing = canvasView.drawing
-            if let undoManager = canvasView.undoManager {
-                undoManager.registerUndo(withTarget: self) {
-                    
-                    $0.setNewDrawingUndoable(oldDrawing,to: canvasView)
-                }
-            }
-            canvasView.drawing = newDrawing
+        let oldDrawing = canvasView.drawing
+        guard oldDrawing.bounds != newDrawing.bounds || oldDrawing.strokes.count != newDrawing.strokes.count else {
+            return
         }
+
+        canvasView.drawing = newDrawing
+        
+        canvasView.undoManager?.registerUndo(withTarget: self) { target in
+            Task{ @MainActor in
+                target.setNewDrawingUndoable(oldDrawing, to: canvasView)
+            }
+        }
+        // canvasView.undoManager?.setActionName("Add Shape")
     }
+    
     
     func setBackgroundColor(){
         for layer in self.layers {
@@ -141,7 +147,10 @@ extension EditorModel {
         drawing.transform(using:transform)
         
         if let canvas = layer.canvas {
-            setNewDrawingUndoable(drawing,to:canvas)
+            Task { @MainActor in
+                EditorModel.shared.setNewDrawingUndoable(drawing,to:canvas)
+            }
+            
         }
    
         //layers[layerIndex].drawing = drawing

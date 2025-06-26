@@ -12,7 +12,8 @@ import SVGKit
 
 
 struct LayerCanvasView: UIViewRepresentable {
-    
+    let index: Int
+  
     @Binding var activeCanvasId: Int
     //@Binding var toolPickerState: ToolPickerState
     @Binding var sharedOffset: CGPoint
@@ -21,7 +22,8 @@ struct LayerCanvasView: UIViewRepresentable {
     let accessoryButton = UIBarButtonItem(image: UIImage(systemName: "signature"), style: .plain, target: nil, action: nil)
     @ObservedObject var editor = EditorModel.shared
     //toolPickerState: Binding<ToolPickerState>,
-    init(model:LayerCanvasModel, activeCanvasId: Binding<Int>,  sharedOffset: Binding<CGPoint>) {
+    init(index:Int,model:LayerCanvasModel, activeCanvasId: Binding<Int>,  sharedOffset: Binding<CGPoint>) {
+        self.index = index
         self.model = model
         print("cpu initcpu")
         //self.currentCanvasId = currentCanvasId
@@ -149,6 +151,14 @@ struct LayerCanvasView: UIViewRepresentable {
             }
         }
         
+        if self.index == 0 {
+           canvasView.backgroundColor = editor.backgroundColor
+           canvasView.isOpaque = editor.backgroundColor != .clear
+        } else {
+           canvasView.backgroundColor = .clear
+           canvasView.isOpaque = false
+        }
+    
         // --- AGGIUNGI QUESTO BLOCCO PER IL DEBUG ---
         /*  let debugView = UIView(frame: canvasView.bounds)
          debugView.backgroundColor = UIColor.systemPink.withAlphaComponent(0.3) // Sfondo colorato per vederla
@@ -207,6 +217,18 @@ struct LayerCanvasView: UIViewRepresentable {
             }
             //}
         }
+        
+        if self.index == 0 {
+           if uiView.backgroundColor != editor.backgroundColor {
+               uiView.backgroundColor = editor.backgroundColor
+               uiView.isOpaque = editor.backgroundColor != .clear
+           }
+       } else {
+           if uiView.backgroundColor != .clear {
+               uiView.backgroundColor = .clear
+               uiView.isOpaque = false
+           }
+       }
     }
     
     // New: dismantleUIView for cleanup when the UIView is removed from the hierarchy
@@ -332,19 +354,26 @@ extension LayerCanvasView.Coordinator {
             EditorModel.shared.showTextInput.toggle()
         }
         
-        if let tappedStroke = canvasView.drawing.strokes.last(where: { $0.renderBounds.contains(locationInDrawing) }) {
-            EditorModel.shared.selectedStroke = tappedStroke
-            print("✅ Stroke selezionato con ID: \(tappedStroke)")
-            updateHandlesOverlay(for: canvasView)
-            return
-        } else {
-            EditorModel.shared.selectedStroke = nil
-            updateHandlesOverlay(for: canvasView)
-            print("Deselezionato.")
-        }
         
         let isShapeToolSelected = (selectedIdentifier == shapeToolIdentifier)
         if isShapeToolSelected {
+            
+            if let tappedStroke = canvasView.drawing.strokes.last(where: { $0.renderBounds.contains(locationInDrawing) }) {
+                EditorModel.shared.selectedStroke = tappedStroke
+                print("✅ Stroke selezionato con ID: \(tappedStroke)")
+                updateHandlesOverlay(for: canvasView)
+                return
+            } else {
+                if let _ = EditorModel.shared.selectedStroke {
+                    EditorModel.shared.selectedStroke = nil
+                    updateHandlesOverlay(for: canvasView)
+                    print("Deselezionato.")
+                    return
+                }
+            }
+
+            
+            
             let selectedAttribute = shapeWrapper.attributeViewController.attributeModel.selectedAttribute
             
             let svgName = "\(selectedAttribute.name).svg"
@@ -358,13 +387,11 @@ extension LayerCanvasView.Coordinator {
             
             let drawing = PKDrawing(strokes: newStrokes)
             let newDrawing = canvasView.drawing.appending(drawing)
-            EditorModel.shared.setNewDrawingUndoable(newDrawing,to:canvasView)
-        }
-        
-      
-         
-       
-        
+            
+            Task { @MainActor in
+                EditorModel.shared.setNewDrawingUndoable(newDrawing,to:canvasView)
+            }
+         }
       
         /*if let imageView = EditorModel.shared.animalStampWrapper.stampImageView(for: sender.location(in: canvasView), angleInRadians: sender.angleInRadians) {
          // Aggiungiamo l'immagine direttamente come subview della canvas
@@ -467,6 +494,15 @@ extension LayerCanvasView.Coordinator: PKCanvasViewDelegate, PKToolPickerObserve
     // Questo metodo viene chiamato OGNI VOLTA che cambi strumento.
     func toolPickerSelectedToolItemDidChange(_ toolPicker: PKToolPicker) {
         // Chiamiamo la nostra funzione di aggiornamento, passandole il picker attuale.
+        
+        guard let canvasView = parent.model.canvas else {
+                print("Error: CanvasView not found in coordinator.")
+                return
+            }
+        Task{ @MainActor in
+            EditorModel.shared.selectedStroke = nil
+            updateHandlesOverlay(for: canvasView)
+        }
         updateGestureRecognizerEnablement(using: toolPicker)
     }
     

@@ -43,7 +43,11 @@ struct TextInput: View {
             )
         // --- Passaggio 2: Collega il TextField allo stato del focus ---
             .focused($isTextFieldFocused)
-        
+            .onAppear {
+                Task{
+                    self.isTextFieldFocused = true
+                }
+            }
         // --- Passaggio 3: Aggiungi la Toolbar per la tastiera ---
             .toolbar {
                 // Usiamo un ToolbarItemGroup con la placement specifica '.keyboard'
@@ -88,24 +92,8 @@ struct TextInput: View {
                         Button {
                             isTextFieldFocused = false
                             if inputText.count > 0 {
-                                
-                                let screenCenter = CGPoint(x: UIScreen.main.bounds.midX, y: UIScreen.main.bounds.midY)
-                                
-                                
-                                let finalScreenPoint = CGPoint(x: screenCenter.x + newPosition.width,
-                                                               y: screenCenter.y + newPosition.height)
-                                
-                                let activeLayerID = EditorModel.shared.activeCanvasId
-                                if let canvasCenterPoint = EditorModel.shared.convertScreenPointToCanvasPoint(finalScreenPoint, for: activeLayerID) {
-                                    
-                                    // 4. Ora chiamiamo addTextStroke con la coordinata CORRETTA.
-                                    EditorModel.shared.addTextStroke(text: inputText, center: canvasCenterPoint)
-                                    
-                                } else {
-                                    print("Errore: impossibile convertire le coordinate per la canvas attiva.")
-                                }
-                                
-                                //EditorModel.shared.addTextStroke(text: inputText, position: newPosition)
+                                let location = model.locationInDrawing
+                                EditorModel.shared.addTextStroke(text: inputText, center: location)
                             }
                             EditorModel.shared.showTextInput = false
                         } label: {

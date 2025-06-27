@@ -43,7 +43,7 @@ class EditorModel: NSObject,ObservableObject {
             saveFontToUserDefaults()
         }
     }
-    @Published var backgroundColor = UIColor.clear
+    @Published var backgroundColor = UIColor.white
     /*{
         didSet {
             setBackgroundColor()
@@ -68,6 +68,10 @@ class EditorModel: NSObject,ObservableObject {
   
     @Published var selectedStroke: PKStroke? = nil
     var locationInDrawing : CGPoint = .zero
+    
+    
+    var originalStrokeForUndo: PKStroke?
+
     
     override init() {
         super.init()

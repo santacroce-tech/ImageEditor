@@ -38,8 +38,10 @@ struct ProjectData: Codable {
               // ...e poi usiamo la nostra funzione helper per riconvertirli in un UIColor.
               // Se la decodifica fallisce, usiamo il nero come colore di default.
               backgroundColor = UIColor.decode(from: colorData) ?? .black
-          }catch let error{
-              backgroundColor = .clear
+          }catch let error {
+              print("initdecoder")
+              print(error)
+              backgroundColor = .white
           }
       }
       
@@ -269,6 +271,7 @@ extension EditorModel {
     
     func publish(){
         if let image = renderLayers() {
+            saveProject()
             onPublish?(image)
         }
     }

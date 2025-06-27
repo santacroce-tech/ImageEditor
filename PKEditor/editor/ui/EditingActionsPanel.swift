@@ -51,8 +51,8 @@ struct EditingActionsPanel: View {
             }
             
             ColorPicker("Background", selection: backgroundColorBinding, supportsOpacity: true)
-                              .labelsHidden() // Nasconde l'etichetta "Sfondo" per mostrare solo il cerchio colorato
-                              .padding(.trailing)
+                              .labelsHidden()
+                              
                               
                               
                               

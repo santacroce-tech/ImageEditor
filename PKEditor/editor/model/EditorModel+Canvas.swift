@@ -178,4 +178,112 @@ extension EditorModel {
             }
         }
         
+    /// Scala lo stroke selezionato. Può essere uniforme o non uniforme.
+     func scaleSelectedStroke(scaleX: CGFloat, scaleY: CGFloat) {
+         guard var selectedStroke = self.selectedStroke else { return }
+         
+         // 2. Trova il layer e il disegno a cui appartiene
+       
+       guard let layer = layers.first(where: { $0.id == activeCanvasId }) else {
+           print("Errore: Nessun layer attivo trovato per aggiungere il testo.")
+           return
+       }
+         guard let strokeIndex = layer.drawing.strokes.firstIndex(where: { $0.randomSeed == selectedStroke.randomSeed }) else {
+                 print("Error: Could not find the selected stroke in the drawing's strokes array.")
+                 return
+             }
+         let bounds = selectedStroke.renderBounds
+         let center = CGPoint(x: bounds.midX, y: bounds.midY)
+         
+         // Crea una trasformazione di scala non uniforme
+         let scaleTransform = CGAffineTransform(scaleX: scaleX, y: scaleY)
+         
+         // Applica la trasformazione attorno al centro dello stroke
+         var finalTransform = CGAffineTransform.identity
+         finalTransform = finalTransform.translatedBy(x: center.x, y: center.y)
+         finalTransform = finalTransform.concatenating(scaleTransform)
+         finalTransform = finalTransform.translatedBy(x: -center.x, y: -center.y)
+         
+         // Applica la nuova trasformazione
+         selectedStroke.transform = selectedStroke.transform.concatenating(finalTransform)
+         
+         var newStrokes = layer.drawing.strokes
+           newStrokes[strokeIndex] = selectedStroke
+           
+           // 6. Creiamo un PKDrawing completamente nuovo e lo riassegniamo.
+           //    Questa riassegnazione è ciò che scatena l'aggiornamento della UI.
+           let newDrawing = PKDrawing(strokes: newStrokes)
+           layer.drawing = newDrawing
+         EditorModel.shared.selectedStroke =    newStrokes[strokeIndex]
+         
+         // Aggiorna il riquadro di selezione
+         Task {
+             if let canvas = layer.canvas, let coordinator = canvas.delegate as? LayerCanvasView.Coordinator {
+                  coordinator.updateHandlesOverlay(for: canvas)
+             }
+         }
+     }
+     
+    
+    func shearSelectedStroke(by dragOffset: CGSize, handleAnchor: HandleAnchor) {
+          // 1. Assicurati che ci sia uno stroke selezionato
+          guard var selectedStroke = self.selectedStroke else { return }
+          
+          // 2. Trova il layer e il disegno a cui appartiene
+        
+        guard let layer = layers.first(where: { $0.id == activeCanvasId }) else {
+            print("Errore: Nessun layer attivo trovato per aggiungere il testo.")
+            return
+        }
+        
+       
+          let bounds = selectedStroke.renderBounds
+          guard bounds.width > 0, bounds.height > 0 else { return }
+
+          // 3. Calcola il fattore di shearing in base alla maniglia trascinata
+          var shearFactorX: CGFloat = 0
+          var shearFactorY: CGFloat = 0
+          
+          switch handleAnchor {
+          case .top: // Inclina orizzontalmente
+              shearFactorX = dragOffset.width / bounds.height
+          case .bottom:
+              shearFactorX = dragOffset.width / bounds.height
+          case .left: // Inclina verticalmente
+              shearFactorY = dragOffset.height / bounds.width
+          case .right:
+              shearFactorY = dragOffset.height / bounds.width
+          default:
+              // Per ora non gestiamo gli angoli o il centro per lo shearing
+              return
+          }
+          
+          // 4. Crea la trasformazione di shearing
+          let shearTransform = CGAffineTransform(a: 1, b: shearFactorY, c: shearFactorX, d: 1, tx: 0, ty: 0)
+          
+          // 5. Applica la trasformazione attorno al centro dello stroke per un effetto naturale
+          let center = CGPoint(x: bounds.midX, y: bounds.midY)
+          var finalTransform = CGAffineTransform.identity
+          finalTransform = finalTransform.translatedBy(x: center.x, y: center.y)
+          finalTransform = finalTransform.concatenating(shearTransform)
+          finalTransform = finalTransform.translatedBy(x: -center.x, y: -center.y)
+          
+          // 6. Applica la trasformazione allo stroke
+        selectedStroke.transform = selectedStroke.transform.concatenating(finalTransform)
+          
+          // 7. Notifica alla UI che il layer è cambiato per forzare l'aggiornamento
+         layer.objectWillChange.send()
+          
+          // Aggiorna il riquadro di selezione
+          if let canvas = layer.canvas {
+              // Dobbiamo forzare l'aggiornamento del riquadro di selezione
+              // lo facciamo tramite un task asincrono per assicurarci che la trasformazione
+              // sia stata renderizzata prima di ricalcolare i bounds
+              Task {
+                  if let coordinator = (canvas.delegate as? LayerCanvasView.Coordinator) {
+                      coordinator.updateHandlesOverlay(for: layer.canvas!)
+                  }
+              }
+          }
+      }
 }

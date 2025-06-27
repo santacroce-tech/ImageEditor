@@ -418,7 +418,7 @@ extension LayerCanvasView.Coordinator {
 extension LayerCanvasView.Coordinator: PKCanvasViewDelegate, PKToolPickerObserver {
     
     @MainActor
-    private func updateHandlesOverlay(for canvasView: PKCanvasView) {
+    func updateHandlesOverlay(for canvasView: PKCanvasView) {
         // Prima rimuoviamo sempre la vecchia vista
         handlesHostingController?.view.removeFromSuperview()
         handlesHostingController = nil

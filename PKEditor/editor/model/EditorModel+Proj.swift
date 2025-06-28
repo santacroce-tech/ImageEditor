@@ -260,7 +260,7 @@ extension EditorModel {
             var projectNames = sortedFiles.map { $0.url.deletingPathExtension().lastPathComponent }
             
             print("✅ Trovati progetti recenti: \(projectNames)")
-            projectNames = Array(projectNames.prefix(5))
+            projectNames = Array(projectNames.prefix(10))
             return projectNames
             
         } catch {

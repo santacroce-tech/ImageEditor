@@ -267,8 +267,9 @@ struct LayerCanvasView: UIViewRepresentable {
     // All'interno di LayerCanvasView.swift
     
     
-    class Coordinator: NSObject {
+    class Coordinator: NSObject, UIGestureRecognizerDelegate {
         var parent: LayerCanvasView
+        private var isRotating = false
         
         private var handlesHostingController: UIHostingController<EditingHandlesView>?
       
@@ -282,7 +283,9 @@ struct LayerCanvasView: UIViewRepresentable {
             super.init()
         }
         
-        
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+            return true
+        }
         
         
         @MainActor @objc func handleHover(_ sender: UIHoverGestureRecognizer) {
@@ -326,7 +329,50 @@ extension LayerCanvasView.Coordinator {
         view.addGestureRecognizer(tapGestureRecognizer!)
         
         // Aggiungi qui anche l'hover gesture recognizer se lo usi
+        
+        // --- AGGIUNGI IL ROTATION GESTURE ---
+       let rotationGesture = UIRotationGestureRecognizer(target: self, action: #selector(handleRotation(_:)))
+       rotationGesture.delegate = self // Impostiamo il delegate
+       view.addGestureRecognizer(rotationGesture)
     }
+    
+ 
+    @MainActor @objc func handleRotation(_ sender: UIRotationGestureRecognizer) {
+        // We only act on the active canvas
+        guard parent.model.id == parent.activeCanvasId,
+              let canvasView = sender.view as? PKCanvasView else { return }
+        print("handleRotation")
+        if sender.state == .began {
+               isRotating = true
+           }
+
+        if let _ = EditorModel.shared.selectedStroke {
+            EditorModel.shared.rotateStroke(sender.rotation)
+        } else {
+            // --- CASE 2: NOTHING IS SELECTED ---
+            // We will rotate the entire drawing around its center.
+            
+            let drawingBounds = canvasView.drawing.bounds
+            guard !drawingBounds.isEmpty else { return }
+            
+            let center = CGPoint(x: drawingBounds.midX, y: drawingBounds.midY)
+            
+            var transform = CGAffineTransform.identity
+            transform = transform.translatedBy(x: center.x, y: center.y)
+            transform = transform.rotated(by: sender.rotation)
+            transform = transform.translatedBy(x: -center.x, y: -center.y)
+            
+            let newDrawing = canvasView.drawing.transformed(using: transform)
+            
+            EditorModel.shared.setNewDrawingUndoable(newDrawing, to: canvasView)
+        }
+
+        if sender.state == .ended || sender.state == .cancelled {
+               isRotating = false
+           }
+        sender.rotation = 0
+    }
+    
     
     @MainActor @objc func handleTap(_ sender: CanvasGestureRecognizer) {
         guard let canvasView = sender.view as? PKCanvasView else { return }
@@ -447,6 +493,8 @@ extension LayerCanvasView.Coordinator: PKCanvasViewDelegate, PKToolPickerObserve
         guard parent.model.id == parent.activeCanvasId,
               let canvasView = scrollView as? PKCanvasView else { return }
         
+        guard !isRotating else { return }
+        print("scrollViewDidZoom")
         
         let isActive = parent.model.id == parent.activeCanvasId
         
@@ -461,7 +509,9 @@ extension LayerCanvasView.Coordinator: PKCanvasViewDelegate, PKToolPickerObserve
          guard parent.model.id == parent.activeCanvasId else { return }
         
         //,let canvasView = scrollView as? PKCanvasView
-        
+        guard !isRotating else { return }
+            
+        print("scrollViewDidScroll")
         let isActive = parent.model.id == parent.activeCanvasId
         
         if isActive {
@@ -475,10 +525,8 @@ extension LayerCanvasView.Coordinator: PKCanvasViewDelegate, PKToolPickerObserve
     
     
     func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
+        
         DispatchQueue.main.async {
-            //let newDrawing = PKDrawing(strokes: canvasView.drawing.strokes)
-            //self.parent.model.drawing = newDrawing
-            //EditorModel.shared.objectWillChange.send()
             self.parent.model.drawing = canvasView.drawing
         }
     }

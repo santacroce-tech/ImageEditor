@@ -44,12 +44,11 @@ extension EditorModel {
         }
          
          
-        
-         let publishAction = UIAction(title: "Publish...", image: nil) { _ in
-             EditorModel.shared.publish()
-         }
+        let publishAction = UIAction(title: "Publish...", image: nil) { _ in
+            EditorModel.shared.publish()
+        }
         // Creiamo il sottomenu "File" con le azioni definite sopra
-        let fileMenu = UIMenu(title: "File", children: [newAction,loadAction,recentMenu, saveAction, saveAsAction,saveToGallery].reversed())
+        let fileMenu = UIMenu(title: "File", children: [newAction,loadAction,recentMenu, saveAction, saveAsAction,saveToGallery,publishAction].reversed())
         
         // --- Sottomenu "Layers" ---
         
@@ -83,25 +82,27 @@ extension EditorModel {
              
          }
          
-         let roteteLeftAction = UIAction(title: "Rotate left", image: nil) { _ in
+         /*
+         let rotateLeftAction = UIAction(title: "Rotate left", image: nil) { _ in
              EditorModel.shared.rotateDrawing( byDegrees: -5)
          }
-         let roteteRightAction = UIAction(title: "Rotate right", image: nil) { _ in
+         let rotateRightAction = UIAction(title: "Rotate right", image: nil) { _ in
              EditorModel.shared.rotateDrawing( byDegrees: +5)
+         }*/
+         let layersMenu = UIAction(title: "Layers", image: nil) { _ in
+             
+             EditorModel.shared.showLayerEditorDetail = true
+             
          }
-        let editMenu = UIMenu(title: "Edit", children: [zoomToFitAction,zoomTo1,roteteLeftAction,roteteRightAction].reversed())
+        let editMenu = UIMenu(title: "Edit", children: [zoomToFitAction,zoomTo1,layersMenu].reversed())
         
         // Creiamo il sottomenu "Layers"
         //let layersMenu = UIMenu(title: "Layers", children: [newLayerAction, viewLayersAction].reversed())
-        let layersMenu = UIAction(title: "Layers", image: nil) { _ in
-            
-            EditorModel.shared.showLayerEditorDetail = true
-            
-        }
+      
         // --- Menu Principale e Bottone ---
         
         // Creiamo il menu principale che contiene i nostri due sottomenu
-        self.mainMenu = UIMenu(title: "", options: .displayInline, children: [fileMenu,editMenu,layersMenu].reversed())
+        self.mainMenu = UIMenu(title: "", options: .displayInline, children: [fileMenu,editMenu].reversed())
         
        
         // Assegniamo il bottone come accessoryItem del picker

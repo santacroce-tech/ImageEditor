@@ -69,10 +69,10 @@ struct EditorView: View {
                     EditingActionsPanel(
                         onRotateLeft: {
                             // Call the model's function for the active layer
-                            model.rotateDrawing( byDegrees: -5)
+                            model.rotateStroke( byDegrees: -5)
                         },
                         onRotateRight: {
-                            model.rotateDrawing( byDegrees: 5)
+                            model.rotateStroke( byDegrees: 5)
                         }
                     )
                     .padding(.top, 10)
@@ -80,7 +80,7 @@ struct EditorView: View {
                   
                   
                     .frame(maxWidth:.infinity,maxHeight:.infinity,alignment:.topTrailing)// Add some space from the top edge
-                    //.zIndex(1000)
+                    .zIndex(1000)
                     
                     
                     if model.showTextInput {

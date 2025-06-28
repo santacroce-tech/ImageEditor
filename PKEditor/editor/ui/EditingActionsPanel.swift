@@ -37,17 +37,18 @@ struct EditingActionsPanel: View {
     
     var body: some View {
         HStack(spacing: 25) { // Adjust spacing as needed
-            
-            // Rotate Left Button
-            Button(action: onRotateLeft) {
-                Image(systemName: "rotate.left")
-                    
-            }
-            
-            // Rotate Right Button
-            Button(action: onRotateRight) {
-                Image(systemName: "rotate.right")
-                    
+            if let selectedStroke = model.selectedStroke {
+                // Rotate Left Button
+                Button(action: onRotateLeft) {
+                 Image(systemName: "rotate.left")
+                 
+                 }
+                 
+                 // Rotate Right Button
+                 Button(action: onRotateRight) {
+                 Image(systemName: "rotate.right")
+                 
+                 }
             }
             
             ColorPicker("Background", selection: backgroundColorBinding, supportsOpacity: true)
@@ -61,11 +62,11 @@ struct EditingActionsPanel: View {
             // Button(action: { ... }) { Image(systemName: "flip.horizontal.fill") }
             
         }
-        .font(.subheadline) // Sets a nice size for all icons
+        .font(.title3) // Sets a nice size for all icons
         .foregroundColor(.primary) // Adapts to light/dark mode
-        .padding(.vertical, 8)
-        .padding(.horizontal, 20)
-        .background(.thinMaterial) // Modern "frosted glass" effect
+        .padding(.vertical, 4)
+        .padding(.horizontal, 10)
+        .background(.ultraThinMaterial) // Modern "frosted glass" effect
         .clipShape(Capsule())
         .shadow(color: Color.black.opacity(0.15), radius: 5, y: 2)
         

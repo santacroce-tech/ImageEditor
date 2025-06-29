@@ -70,9 +70,11 @@ struct EditingHandlesView: View {
                                    if initialHeight > 0 {
                                        let newHeight = initialHeight + value.translation.height
                                        let scaleFactor = newHeight / initialHeight
+                                       let scaleY = newHeight / initialHeight
+                                       let scaleX: CGFloat = 1.0
+                                     
                                        if scaleFactor > 0.1 {
-                                           // Chiama il metodo di preview, non quello di commit
-                                           //editor.applyLiveScale(scaleX: scaleFactor, scaleY: scaleFactor)
+                                           editor.scaleSelectedStroke(scaleX: scaleX, scaleY: scaleY)
                                        }
                                    }
                                }

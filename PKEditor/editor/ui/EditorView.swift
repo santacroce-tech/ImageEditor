@@ -62,6 +62,7 @@ struct EditorView: View {
                         )
                         .allowsHitTesting(model.activeCanvasId == layer.currentCanvasId)
                         .zIndex(Double(index))
+                        .id(model.activeCanvasId)
                     }.onAppear {
                         //model.setBackgroundColor()
                     }

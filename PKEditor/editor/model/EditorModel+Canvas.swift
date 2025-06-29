@@ -56,30 +56,80 @@ extension EditorModel {
             let drawing1 = PKDrawing(strokes: newStrokes)
             let newDrawing1 = canvas.drawing.appending(drawing1)
             Task { @MainActor in
-                setNewDrawingUndoable(newDrawing1,to:canvas)
+                //setNewDrawingUndoable(newDrawing1,to:canvas)
+                //setNewDrawingUndoable(newDrawing1,to:layer)
+                performAndRegisterDrawing(
+                    newDrawing1,
+                    on:layer,
+                    actionName: "AddTextStroke"
+                )
             }
         }
     }
-    
     
     @MainActor
-    func setNewDrawingUndoable(_ newDrawing: PKDrawing, to canvasView: PKCanvasView) {
-        let oldDrawing = canvasView.drawing
-        /*guard oldDrawing.bounds != newDrawing.bounds || oldDrawing.strokes.count != newDrawing.strokes.count else {
-            return
-        }*/
+    private func updateDrawingAtomically(
+        to newDrawing: PKDrawing,
+        on layer: LayerCanvasModel
+    ) -> PKDrawing {
         
-        canvasView.drawing = newDrawing
+        // 1. Leggi lo stato vecchio e attuale DAL MODELLO. Il modello è la verità.
+        let oldDrawing = layer.drawing
         
-        canvasView.undoManager?.registerUndo(withTarget: self) { target in
-            Task{ @MainActor in
-                target.setNewDrawingUndoable(oldDrawing, to: canvasView)
+        guard oldDrawing.dataRepresentation() != newDrawing.dataRepresentation() else {
+                return oldDrawing
             }
-        }
-        // canvasView.undoManager?.setActionName("Add Shape")
+            
+        
+        // 3. Imposta il flag per silenziare il delegate
+        self.isApplyingProgrammaticChange = true
+        
+        // 4. SINCRONIZZA ATOMICAMENTE
+        // Aggiorna prima il modello
+        layer.drawing = newDrawing
+        // Subito dopo, aggiorna la vista con lo stesso identico oggetto
+        layer.canvas?.drawing = newDrawing
+        
+        // 5. Rilascia il flag
+        self.isApplyingProgrammaticChange = false
+        
+        // 6. Restituisci lo stato precedente per l'UndoManager
+        return oldDrawing
     }
     
+    @MainActor
+    func performAndRegisterDrawing(
+        _ newDrawing: PKDrawing,
+        on layer: LayerCanvasModel,
+        actionName: String // Es. "Aggiungi Forma" o "Disegno"
+    ) {
+        // Prendi lo stato attuale DAL MODELLO
+        //let oldDrawing = layer.drawing
+
+        // Non fare nulla se non c'è un cambiamento reale
+        //guard oldDrawing.strokes != newDrawing.strokes else { return }
+
+        // Esegui il cambiamento usando il nostro setter privato
+        let oldDrawing = self.updateDrawingAtomically(to: newDrawing, on: layer)
+       
+        // Registra l'azione di UNDO con l'UndoManager.
+        // L'UndoManager gestirà il REDO automaticamente!
+        layer.canvas?.undoManager?.registerUndo(withTarget: self) { target in
+            // L'azione di UNDO è semplicemente eseguire di nuovo questa stessa funzione
+            // con il disegno vecchio. L'UndoManager capirà che questa è un'operazione
+            // di undo e la metterà nello stack di REDO.
+            target.performAndRegisterDrawing(oldDrawing, on: layer, actionName: actionName)
+        }
+
+        // Imposta il nome dell'azione (visibile nel menu Modifica -> Annulla "Azione")
+        // Lo facciamo solo se non stiamo già eseguendo un undo o un redo.
+        if let undoManager = layer.canvas?.undoManager, !undoManager.isUndoing, !undoManager.isRedoing {
+            undoManager.setActionName(actionName)
+        }
+    }
     
+
+ 
     func setBackgroundColor(){
         for layer in self.layers {
             if let canvas = layer.canvas {
@@ -126,14 +176,19 @@ extension EditorModel {
     }
     func rotateStroke(byDegrees degrees: Double){
         let rotation = CGFloat(degrees) * .pi / 180.0
-        rotateStroke(rotation)
+        rotateStroke(rotation,state: UIRotationGestureRecognizer.State.ended)
     }
     
-    func rotateStroke(_ rotation: CGFloat){
+    func rotateStroke(_ rotation: CGFloat,state:UIRotationGestureRecognizer.State?){
+       
+        
         guard let layer = layers.first(where: { $0.id == activeCanvasId }) , let canvasView = layer.canvas else { return }
         guard let selectedStroke = selectedStroke else { return }
        
-   
+        //if state == .began {
+        //    EditorModel.shared.isApplyingProgrammaticChange = true
+        //}
+        
         print("rotateStroke")
         guard let strokeIndex = canvasView.drawing.strokes.firstIndex(where: { $0.randomSeed == selectedStroke.randomSeed }) else { return }
         
@@ -158,16 +213,33 @@ extension EditorModel {
         let newDrawing = PKDrawing(strokes: newStrokes)
         
         // 5. Usiamo il nostro metodo di undo/redo che è già robusto.
-        EditorModel.shared.setNewDrawingUndoable(newDrawing, to: canvasView)
-        layer.drawing = newDrawing
-          
-        EditorModel.shared.selectedStroke =  canvasView.drawing.strokes[strokeIndex]
+        //EditorModel.shared.setNewDrawingUndoable(newDrawing, to: canvasView)
+        //EditorModel.shared.setNewDrawingUndoable(newDrawing, to: layer)
         
-        Task {
-            if let canvas = layer.canvas, let coordinator = canvas.delegate as? LayerCanvasView.Coordinator {
-                coordinator.updateHandlesOverlay(for: canvas)
+        //if state == .ended {
+            performAndRegisterDrawing(
+                newDrawing,
+                on:layer,
+                actionName: "rotateStroke"
+            )
+              
+            // this must be @Published
+            EditorModel.shared.selectedStroke =  canvasView.drawing.strokes[strokeIndex]
+            //EditorModel.shared.isApplyingProgrammaticChange = false
+         
+            Task {
+                if let canvas = layer.canvas, let coordinator = canvas.delegate as? LayerCanvasView.Coordinator {
+                    coordinator.updateHandlesOverlay(for: canvas)
+                }
             }
-        }
+        /*}else if state == .changed {
+            layer.canvas?.drawing = newDrawing
+          
+        }else{
+            //EditorModel.shared.isApplyingProgrammaticChange = true
+         
+        }*/
+        
         
     }
     
@@ -195,7 +267,13 @@ extension EditorModel {
         
         if let canvas = layer.canvas {
             Task { @MainActor in
-                EditorModel.shared.setNewDrawingUndoable(drawing,to:canvas)
+                //EditorModel.shared.setNewDrawingUndoable(drawing,to:canvas)
+                //EditorModel.shared.setNewDrawingUndoable(drawing,to:layer)
+                performAndRegisterDrawing(
+                    drawing,
+                    on:layer,
+                    actionName: "rotateDrawing"
+                )
             }
             
         }
@@ -269,7 +347,14 @@ extension EditorModel {
         // 6. Creiamo un PKDrawing completamente nuovo e lo riassegniamo.
         //    Questa riassegnazione è ciò che scatena l'aggiornamento della UI.
         let newDrawing = PKDrawing(strokes: newStrokes)
-        layer.drawing = newDrawing
+        //layer.drawing = newDrawing
+        
+        EditorModel.shared.performAndRegisterDrawing(
+            newDrawing,
+            on:layer,
+            actionName: "scaleStroke"
+        )
+        
         EditorModel.shared.selectedStroke =    newStrokes[strokeIndex]
         
         // Aggiorna il riquadro di selezione

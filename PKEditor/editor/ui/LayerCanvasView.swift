@@ -12,69 +12,52 @@ import SVGKit
 
 
 struct LayerCanvasView: UIViewRepresentable {
+    @ObservedObject var editor = EditorModel.shared
+    var model:LayerCanvasModel
+    
     let index: Int
-  
+    
     @Binding var activeCanvasId: Int
     //@Binding var toolPickerState: ToolPickerState
     @Binding var sharedOffset: CGPoint
     @State private var localToolPicker: PKToolPicker
-    var model:LayerCanvasModel
-    let accessoryButton = UIBarButtonItem(image: UIImage(systemName: "signature"), style: .plain, target: nil, action: nil)
-    @ObservedObject var editor = EditorModel.shared
+    //let accessoryButton = UIBarButtonItem(image: UIImage(systemName: "signature"), style: .plain, target: nil, action: nil)
     //toolPickerState: Binding<ToolPickerState>,
     init(index:Int,model:LayerCanvasModel, activeCanvasId: Binding<Int>,  sharedOffset: Binding<CGPoint>) {
         self.index = index
         self.model = model
-        print("cpu initcpu")
-        //self.currentCanvasId = currentCanvasId
+        self.model.index = index
+        print("layerview init")
         _activeCanvasId = activeCanvasId
         //_toolPickerState = toolPickerState
         _sharedOffset = sharedOffset
-        // Initialize the local PKToolPicker here (no 'for: window' needed)
         
-        /*
-         var config = PKToolPickerCustomItem.Configuration(identifier: "lr.PKEditor", name: "star")
-         
-         // Provide a custom image for the custom tool item.
-         config.imageProvider = { toolItem in
-         guard let toolImage = UIImage(named: config.name) else {
-         return UIImage()
-         }
-         return toolImage
-         }
-         
-         
-         // Configure additional appearance options for the custom tool item.
-         config.allowsColorSelection = true
-         config.defaultColor = .red
-         config.defaultWidth = 45.0
-         config.widthVariants = [28: UIImage(named: config.name)!,45.0: UIImage(named: config.name)!,90.0: UIImage(named: config.name)!]
-         
-         
-         // Create a custom tool item using the configuration.
-         let customItem = PKToolPickerCustomItem(configuration: config)
-         */
         
-        // Create a picker with the custom tool item and a system ruler tool.
-        //let items = PKToolPicker().toolItems //PKToolPickerRulerItem()
-        //let picker = PKToolPicker(toolItems: items)
+        var config = PKToolPickerCustomItem.Configuration(identifier: "lr.PKEditor", name: "star")
         
-        //self.animalStampWrapper = AnimalStampWrapper()
+        // Provide a custom image for the custom tool item.
+        config.imageProvider = { toolItem in
+            guard let toolImage = UIImage(named: config.name) else {
+                return UIImage()
+            }
+            return toolImage
+        }
         
-        /*let toolPickerRed = UIColor(red: 252 / 255, green: 49 / 255, blue: 66 / 255, alpha: 1)
-         let penWidth = PKInkingTool.InkType.pen.defaultWidth
-         let secondPen = PKToolPickerInkingItem(type: .pen,
-         color: toolPickerRed,
-         width: penWidth,
-         identifier: "com.example.apple-samplecode.second-pen")
-         */
         
-        //_localToolPicker = State(initialValue: PKToolPicker())
+        // Configure additional appearance options for the custom tool item.
+        config.allowsColorSelection = true
+        config.defaultColor = .red
+        config.defaultWidth = 45.0
+        config.widthVariants = [28: UIImage(named: config.name)!,45.0: UIImage(named: config.name)!,90.0: UIImage(named: config.name)!]
+        
+        
+        // Create a custom tool item using the configuration.
+        let starItem = PKToolPickerCustomItem(configuration: config)
         
         if let picker = EditorModel.shared.toolPicker {
             _localToolPicker = State(initialValue: picker)
-        }else{
-            let toolItems = [EditorModel.shared.shapeStampWrapper.toolItem] +
+        }else{ //[starItem] +
+            let toolItems =  [ EditorModel.shared.shapeStampWrapper.toolItem] +
             [EditorModel.shared.textStampWrapper.toolItem] +
             PKToolPicker().toolItems
             
@@ -152,13 +135,13 @@ struct LayerCanvasView: UIViewRepresentable {
         }
         
         if self.index == 0 {
-           canvasView.backgroundColor = editor.backgroundColor
-           canvasView.isOpaque = editor.backgroundColor != .clear
+            canvasView.backgroundColor = editor.backgroundColor
+            canvasView.isOpaque = editor.backgroundColor != .clear
         } else {
-           canvasView.backgroundColor = .clear
-           canvasView.isOpaque = false
+            canvasView.backgroundColor = .clear
+            canvasView.isOpaque = false
         }
-    
+        
         // --- AGGIUNGI QUESTO BLOCCO PER IL DEBUG ---
         /*  let debugView = UIView(frame: canvasView.bounds)
          debugView.backgroundColor = UIColor.systemPink.withAlphaComponent(0.3) // Sfondo colorato per vederla
@@ -219,16 +202,16 @@ struct LayerCanvasView: UIViewRepresentable {
         }
         
         if self.index == 0 {
-           if uiView.backgroundColor != editor.backgroundColor {
-               uiView.backgroundColor = editor.backgroundColor
-               uiView.isOpaque = editor.backgroundColor != .clear
-           }
-       } else {
-           if uiView.backgroundColor != .clear {
-               uiView.backgroundColor = .clear
-               uiView.isOpaque = false
-           }
-       }
+            if uiView.backgroundColor != editor.backgroundColor {
+                uiView.backgroundColor = editor.backgroundColor
+                uiView.isOpaque = editor.backgroundColor != .clear
+            }
+        } else {
+            if uiView.backgroundColor != .clear {
+                uiView.backgroundColor = .clear
+                uiView.isOpaque = false
+            }
+        }
     }
     
     // New: dismantleUIView for cleanup when the UIView is removed from the hierarchy
@@ -272,7 +255,7 @@ struct LayerCanvasView: UIViewRepresentable {
         private var isRotating = false
         
         private var handlesHostingController: UIHostingController<EditingHandlesView>?
-      
+        
         // --- MODIFICA 1: Usa opzionali standard (?) invece di impliciti (!) ---
         var tapGestureRecognizer: CanvasGestureRecognizer?
         var stampHoverGestureRecognizer: UIHoverGestureRecognizer?
@@ -323,7 +306,7 @@ struct LayerCanvasView: UIViewRepresentable {
 extension LayerCanvasView.Coordinator {
     
     
-   
+    
     func setUpGestureRecognizers(on view: UIView) {
         tapGestureRecognizer = CanvasGestureRecognizer(target: self, action: #selector(handleTap(_:)))
         view.addGestureRecognizer(tapGestureRecognizer!)
@@ -331,27 +314,26 @@ extension LayerCanvasView.Coordinator {
         // Aggiungi qui anche l'hover gesture recognizer se lo usi
         
         // --- AGGIUNGI IL ROTATION GESTURE ---
-       let rotationGesture = UIRotationGestureRecognizer(target: self, action: #selector(handleRotation(_:)))
-       rotationGesture.delegate = self // Impostiamo il delegate
-       view.addGestureRecognizer(rotationGesture)
+        let rotationGesture = UIRotationGestureRecognizer(target: self, action: #selector(handleRotation(_:)))
+        rotationGesture.delegate = self // Impostiamo il delegate
+        view.addGestureRecognizer(rotationGesture)
     }
     
- 
+    
     @MainActor @objc func handleRotation(_ sender: UIRotationGestureRecognizer) {
         // We only act on the active canvas
         guard parent.model.id == parent.activeCanvasId,
               let canvasView = sender.view as? PKCanvasView else { return }
         print("handleRotation")
+        
+        
         if sender.state == .began {
-               isRotating = true
-           }
-
+            EditorModel.shared.isApplyingProgrammaticChange = true
+        }
+        
         if let _ = EditorModel.shared.selectedStroke {
-            EditorModel.shared.rotateStroke(sender.rotation)
+            EditorModel.shared.rotateStroke(sender.rotation,state: sender.state)
         } else {
-            // --- CASE 2: NOTHING IS SELECTED ---
-            // We will rotate the entire drawing around its center.
-            
             let drawingBounds = canvasView.drawing.bounds
             guard !drawingBounds.isEmpty else { return }
             
@@ -364,12 +346,25 @@ extension LayerCanvasView.Coordinator {
             
             let newDrawing = canvasView.drawing.transformed(using: transform)
             
-            EditorModel.shared.setNewDrawingUndoable(newDrawing, to: canvasView)
+            let  layer = parent.model
+            
+            if sender.state == .ended {
+                EditorModel.shared.performAndRegisterDrawing(
+                    newDrawing,
+                    on:layer,
+                    actionName: "handleRotation"
+                )
+                EditorModel.shared.isApplyingProgrammaticChange = false
+                
+            }else{
+                layer.canvas?.drawing = newDrawing
+            }
+            if sender.state == .cancelled || sender.state == .failed {
+                EditorModel.shared.isApplyingProgrammaticChange = false
+            }
         }
-
-        if sender.state == .ended || sender.state == .cancelled {
-               isRotating = false
-           }
+        
+        
         sender.rotation = 0
     }
     
@@ -380,9 +375,9 @@ extension LayerCanvasView.Coordinator {
         let location = sender.location(in: canvasView)
         
         let locationInDrawing = CGPoint(
-                x: (location.x) / canvasView.zoomScale,
-                y: (location.y) / canvasView.zoomScale
-            )
+            x: (location.x) / canvasView.zoomScale,
+            y: (location.y) / canvasView.zoomScale
+        )
         
         let shapeWrapper = EditorModel.shared.shapeStampWrapper
         
@@ -417,7 +412,7 @@ extension LayerCanvasView.Coordinator {
                     return
                 }
             }
-
+            
             
             
             let selectedAttribute = shapeWrapper.attributeViewController.attributeModel.selectedAttribute
@@ -433,19 +428,26 @@ extension LayerCanvasView.Coordinator {
             
             let drawing = PKDrawing(strokes: newStrokes)
             let newDrawing = canvasView.drawing.appending(drawing)
+            let  layer = parent.model
             
             Task { @MainActor in
-                EditorModel.shared.setNewDrawingUndoable(newDrawing,to:canvasView)
+                //EditorModel.shared.setNewDrawingUndoable(newDrawing,to:layer)
+                //EditorModel.shared.setNewDrawingUndoable(newDrawing,to:canvasView)
+                EditorModel.shared.performAndRegisterDrawing(
+                    newDrawing,
+                    on:layer,
+                    actionName: "handleTap"
+                )
             }
-         }
-      
+        }
+        
         /*if let imageView = EditorModel.shared.animalStampWrapper.stampImageView(for: sender.location(in: canvasView), angleInRadians: sender.angleInRadians) {
          // Aggiungiamo l'immagine direttamente come subview della canvas
          canvasView.addSubview(imageView)
          //insertImageViewUndoable(newDrawing,to:canvasView)
          }*/
         
-       
+        
     }
     
     
@@ -468,7 +470,7 @@ extension LayerCanvasView.Coordinator: PKCanvasViewDelegate, PKToolPickerObserve
         // Prima rimuoviamo sempre la vecchia vista
         handlesHostingController?.view.removeFromSuperview()
         handlesHostingController = nil
-      
+        
         if let selectedStroke = EditorModel.shared.selectedStroke {
             let strokeBounds = selectedStroke.renderBounds
             let zoom = canvasView.zoomScale
@@ -493,7 +495,10 @@ extension LayerCanvasView.Coordinator: PKCanvasViewDelegate, PKToolPickerObserve
         guard parent.model.id == parent.activeCanvasId,
               let canvasView = scrollView as? PKCanvasView else { return }
         
-        guard !isRotating else { return }
+        guard !EditorModel.shared.isApplyingProgrammaticChange else {
+            print ("isApplyingProgrammaticChange")
+            return
+        }
         print("scrollViewDidZoom")
         
         let isActive = parent.model.id == parent.activeCanvasId
@@ -506,11 +511,13 @@ extension LayerCanvasView.Coordinator: PKCanvasViewDelegate, PKToolPickerObserve
     }
     
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
-         guard parent.model.id == parent.activeCanvasId else { return }
+        guard parent.model.id == parent.activeCanvasId else { return }
         
-        //,let canvasView = scrollView as? PKCanvasView
-        guard !isRotating else { return }
-            
+        guard !EditorModel.shared.isApplyingProgrammaticChange else {
+            print ("isApplyingProgrammaticChange")
+            return
+        }
+        
         print("scrollViewDidScroll")
         let isActive = parent.model.id == parent.activeCanvasId
         
@@ -525,6 +532,11 @@ extension LayerCanvasView.Coordinator: PKCanvasViewDelegate, PKToolPickerObserve
     
     
     func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
+        print ("canvasViewDrawingDidChange")
+        guard !EditorModel.shared.isApplyingProgrammaticChange else {
+            print ("isApplyingProgrammaticChange")
+            return
+        }
         
         DispatchQueue.main.async {
             self.parent.model.drawing = canvasView.drawing
@@ -544,9 +556,9 @@ extension LayerCanvasView.Coordinator: PKCanvasViewDelegate, PKToolPickerObserve
         // Chiamiamo la nostra funzione di aggiornamento, passandole il picker attuale.
         
         guard let canvasView = parent.model.canvas else {
-                print("Error: CanvasView not found in coordinator.")
-                return
-            }
+            print("Error: CanvasView not found in coordinator.")
+            return
+        }
         Task{ @MainActor in
             EditorModel.shared.selectedStroke = nil
             updateHandlesOverlay(for: canvasView)
@@ -579,6 +591,8 @@ extension LayerCanvasView.Coordinator: PKCanvasViewDelegate, PKToolPickerObserve
     }
     
     // Lasciamo questo metodo vuoto per ora, ma è importante che ci sia.
-    func toolPickerIsRulerActiveDidChange(_ toolPicker: PKToolPicker) {}
+    func toolPickerIsRulerActiveDidChange(_ toolPicker: PKToolPicker) {
+        
+    }
 }
 

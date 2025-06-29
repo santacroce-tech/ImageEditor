@@ -14,6 +14,24 @@ struct FontBottomSheetView: View {
     @StateObject private var model = EditorModel.shared
     @State var selectedFont : String = ""
     let fontSizes: [CGFloat] = [10,12,14,18, 24, 36, 48, 64, 72, 96,144]
+    let fontColor: [UIColor] = []
+  
+    /*private var fontColorBinding: Binding<Color> {
+            Binding<Color>(
+                // GET: Convert the model's UIColor to a SwiftUI Color
+                get: { Color(self.model.currentTextColor) },
+                
+                // SET: Convert the ColorPicker's new Color back to a UIColor
+                set: { newColor in
+                    // We need to get the UIColor components from the new SwiftUI Color.
+                    // This requires a bit of code.
+                    let uiColor = UIColor(newColor)
+                    self.model.currentTextColor = uiColor
+                    
+                }
+            )
+        }
+    */
     
     var body: some View {
         // HStack dispone gli elementi orizzontalmente, su una riga.
@@ -97,6 +115,11 @@ struct FontBottomSheetView: View {
                         .cornerRadius(8)
                 }
             }.frame(maxHeight:.infinity,alignment: .top)
+            
+            HStack{
+                
+            }
+            
             Spacer()
         }.frame(maxHeight:.infinity,alignment: .top)
             .padding() // Aggiunge un po' di spazio attorno all'intera riga

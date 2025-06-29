@@ -182,13 +182,23 @@ extension EditorModel {
     
     
     func renderLayers() -> UIImage? {
+        
+        let renderFrame = CGRect(origin: .zero, size: self.contentSize)
+            
+        // Controlliamo che la dimensione sia valida.
+        guard renderFrame.width > 0, renderFrame.height > 0 else {
+            print("Dimensioni del contentSize non valide per l'esportazione.")
+            return nil
+        }
+      
+        
          let visibleLayers = self.layers.filter { $0.visible && !$0.drawing.bounds.isEmpty }
          
          guard !visibleLayers.isEmpty else {
              print("Nessun layer visibile con contenuto da esportare.")
              return nil
          }
-         
+         /*
          let totalBounds = visibleLayers.reduce(CGRect.null) { (result, layer) -> CGRect in
              return result.union(layer.drawing.bounds)
          }
@@ -199,18 +209,25 @@ extension EditorModel {
          }
          
          let renderer = UIGraphicsImageRenderer(bounds: totalBounds)
-         
+         */
+        let renderer = UIGraphicsImageRenderer(size: contentSize)
          let compositeImage = renderer.image { context in
              // Disegniamo i layer uno sopra l'altro, dal basso verso l'alto
+             
              for layer in self.layers {
                  // Se il layer non è visibile, lo saltiamo
                  guard layer.visible else { continue }
                  
+                 if layer.index == 0 {
+                     self.backgroundColor.setFill()
+                     context.fill(renderFrame)
+                 }
+              
                  // Generiamo l'immagine per questo singolo layer
-                 let layerImage = layer.drawing.image(from: totalBounds, scale: UIScreen.main.scale)
+                 let layerImage = layer.drawing.image(from: renderFrame, scale: UIScreen.main.scale)
                  
                  // Disegniamo l'immagine nel contesto, rispettando la sua opacità
-                 layerImage.draw(in: totalBounds, blendMode: .normal, alpha: layer.opacity)
+                 layerImage.draw(in: renderFrame, blendMode: .normal, alpha: layer.opacity)
              }
          }
          return compositeImage

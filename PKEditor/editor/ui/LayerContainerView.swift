@@ -26,6 +26,6 @@ struct LayerContainerView: View {
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .opacity(layer.visible ? layer.opacity : 0.0) 
-       
+        
     }
 }

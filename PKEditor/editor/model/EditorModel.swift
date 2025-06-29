@@ -37,12 +37,14 @@ class EditorModel: NSObject,ObservableObject {
     @Published var showFontPicker:Bool = false
     @Published var showFontSheet = false
     @Published var activeCanvasId: Int = 1
-    @Published var contentSize: CGSize = CGSize(width: 1000, height: 1000)
+    @Published var contentSize: CGSize = CGSize(width: 1024, height: 1024)
     @Published var currentFont: UIFont = UIFont.systemFont(ofSize: 64, weight: .regular){
         didSet {
             saveFontToUserDefaults()
         }
     }
+    //@Published var currentTextColor: UIColor = .black // Default a nero
+      
     @Published var backgroundColor = UIColor.white
     /*{
         didSet {
@@ -71,6 +73,7 @@ class EditorModel: NSObject,ObservableObject {
     
     
     var originalStrokeForUndo: PKStroke?
+    var isApplyingProgrammaticChange = false
 
     
     override init() {

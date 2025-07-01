@@ -30,6 +30,8 @@ class EditorModel: NSObject,ObservableObject {
     
     @Published var showAccessorySheet: Bool = false
     @Published var showPhotoPicker = false
+    @Published var showGallery = false
+    
     @Published var showDocPicker = false
     @Published var showTextInput = false
     @Published var saveProjectAs: Bool = false
@@ -44,7 +46,7 @@ class EditorModel: NSObject,ObservableObject {
         }
     }
     //@Published var currentTextColor: UIColor = .black // Default a nero
-      
+    @Published var backgroundImage: UIImage?
     @Published var backgroundColor = UIColor.white
     /*{
         didSet {
@@ -54,8 +56,8 @@ class EditorModel: NSObject,ObservableObject {
     
     var contentOffset: CGPoint = .zero
     var zoomScale: CGFloat = 1.0
-    let minimumZoomScale = 0.33333
-    let maximumZoomScale = 3.0
+    let minimumZoomScale = 0.01
+    let maximumZoomScale = 10.0
     //let minimumZoomScale = 1.0
     //let maximumZoomScale = 1.0
  
@@ -67,7 +69,8 @@ class EditorModel: NSObject,ObservableObject {
     var toolPicker: PKToolPicker?
     var mainMenu:UIMenu!
     var onPublish: ((_ image:UIImage) -> Void)? = nil
-  
+    var onExit: (() -> Void)? = nil
+ 
     @Published var selectedStroke: PKStroke? = nil
     var locationInDrawing : CGPoint = .zero
     

@@ -23,7 +23,8 @@ struct EditorView: View {
     @State var showEditorDetail = false
     @State var selectedPhoto: PhotosPickerItem?
     @State var projectName = ""
-    
+    @State private var selectedPhotoItem: PhotosPickerItem?
+
     private var textInputPosition: CGPoint {
         // 1. Prendi i valori correnti dal modello
         let locationInDrawing = model.locationInDrawing
@@ -62,7 +63,7 @@ struct EditorView: View {
                         )
                         .allowsHitTesting(model.activeCanvasId == layer.currentCanvasId)
                         .zIndex(Double(index))
-                        .id(model.activeCanvasId)
+                        //.id(model.activeCanvasId)
                     }.onAppear {
                         //model.setBackgroundColor()
                     }
@@ -135,15 +136,32 @@ struct EditorView: View {
                 Button("Cancel".localize,role:.cancel){
                 }
             }
-            
-            .onChange(of: model.showPhotoPicker) { oldState, newState in
+            .photosPicker(
+                       isPresented: $model.showPhotoPicker, // Usa la variabile che già hai
+                       selection: $selectedPhotoItem,
+                       matching: .images
+                   )
+                   // --- 3. LOGICA DI GESTIONE IMMAGINE ---
+                   .onChange(of: selectedPhotoItem) { _, newItem in
+                       Task {
+                           if let data = try? await newItem?.loadTransferable(type: Data.self) {
+                               if let image = UIImage(data: data) {
+                                   model.newProjectFromImage(image)
+                                  
+                                   print("✅ Immagine selezionata dalla galleria: \(image.size)")
+                               }
+                           }
+                       }
+                   }
+            .onChange(of: model.showGallery) { oldState, newState in
                 let photosURL = URL(string: "photos-redirect://")
                 if let url = photosURL {
                      if UIApplication.shared.canOpenURL(url) {
                         UIApplication.shared.open(url)
                      }
                 }
-                model.showPhotoPicker = false
+                model.showGallery = false
+             
             }.fileImporter(
                 isPresented: $model.showDocPicker,
                 allowedContentTypes: [.json]

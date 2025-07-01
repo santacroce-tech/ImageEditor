@@ -24,10 +24,24 @@ extension EditorModel {
         let newAction = UIAction(title: "New", image: nil) { _ in
             EditorModel.shared.newProject()
         }
-        let loadAction = UIAction(title: "Open...", image: nil) { _ in
-            //EditorModel.shared.loadProject()
-            self.showDocPicker = true
-        }
+         
+         let loadAction = UIAction(title: "from project", image: nil) { _ in
+             //EditorModel.shared.loadProject()
+             self.showDocPicker = true
+         }
+         
+         let openFromGallery = UIAction(title: "from gallery", image: nil) { _ in
+             //EditorModel.shared.loadProject()
+             self.showPhotoPicker = true
+         }
+         
+         let openFromCamera = UIAction(title: "from camera", image: nil) { _ in
+             //EditorModel.shared.loadProject()
+             //self.showDocPicker = true
+         }
+         let openMenu = UIMenu(title: "Open...", children: [loadAction,openFromGallery,openFromCamera])
+       
+       
         
         let recentActions = EditorModel.shared.recentProjects.map{ item in
             let recentAction = UIAction(title: item, image: nil) { _ in
@@ -48,7 +62,7 @@ extension EditorModel {
             EditorModel.shared.publish()
         }
         // Creiamo il sottomenu "File" con le azioni definite sopra
-        let fileMenu = UIMenu(title: "File", children: [newAction,loadAction,recentMenu, saveAction, saveAsAction,saveToGallery,publishAction].reversed())
+        let fileMenu = UIMenu(title: "File", children: [newAction,openMenu,recentMenu, saveAction, saveAsAction,saveToGallery,publishAction].reversed())
         
         // --- Sottomenu "Layers" ---
         
@@ -100,9 +114,12 @@ extension EditorModel {
         //let layersMenu = UIMenu(title: "Layers", children: [newLayerAction, viewLayersAction].reversed())
       
         // --- Menu Principale e Bottone ---
-        
+         let closeMenu = UIAction(title: "Exit", image: nil) { _ in
+             EditorModel.shared.exit()
+             
+         }
         // Creiamo il menu principale che contiene i nostri due sottomenu
-        self.mainMenu = UIMenu(title: "", options: .displayInline, children: [fileMenu,editMenu].reversed())
+        self.mainMenu = UIMenu(title: "", options: .displayInline, children: [fileMenu,editMenu,closeMenu].reversed())
         
        
         // Assegniamo il bottone come accessoryItem del picker

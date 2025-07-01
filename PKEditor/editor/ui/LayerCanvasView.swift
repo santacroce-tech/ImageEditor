@@ -71,11 +71,12 @@ struct LayerCanvasView: UIViewRepresentable {
         
     }
     
+    
     func makeUIView(context: Context) -> PKCanvasView {
         
         print("cpu makeUIView")
         
-        let canvasView = PKCanvasView()
+        let canvasView = CustomPKCanvasView() // PKCanvasView()
         canvasView.drawing = model.drawing
         //canvasView.drawingPolicy = .anyInput
         canvasView.drawingPolicy = model.drawingPolicy
@@ -141,6 +142,8 @@ struct LayerCanvasView: UIViewRepresentable {
             canvasView.backgroundColor = .clear
             canvasView.isOpaque = false
         }
+      
+        context.coordinator.updateBackgroundImage(for: canvasView)
         
         // --- AGGIUNGI QUESTO BLOCCO PER IL DEBUG ---
         /*  let debugView = UIView(frame: canvasView.bounds)
@@ -212,6 +215,8 @@ struct LayerCanvasView: UIViewRepresentable {
                 uiView.isOpaque = false
             }
         }
+        context.coordinator.updateBackgroundImage(for: uiView)
+        
     }
     
     // New: dismantleUIView for cleanup when the UIView is removed from the hierarchy
@@ -260,6 +265,8 @@ struct LayerCanvasView: UIViewRepresentable {
         var tapGestureRecognizer: CanvasGestureRecognizer?
         var stampHoverGestureRecognizer: UIHoverGestureRecognizer?
         private var hoverPreviewView: UIView?
+        private var backgroundImageView: UIImageView?
+        
         
         init(_ parent: LayerCanvasView) {
             self.parent = parent
@@ -268,6 +275,27 @@ struct LayerCanvasView: UIViewRepresentable {
         
         func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
             return true
+        }
+        
+        
+        func updateBackgroundImage(for canvasView: PKCanvasView) {
+            // Controlla se questo è il layer più in basso (index 0)
+            if parent.index == 0 {
+                // Se è il layer di sfondo e l'immagine non è ancora stata aggiunta...
+                
+                
+                if backgroundImageView == nil, let bgImage = EditorModel.shared.backgroundImage {
+                    
+                    
+                    (canvasView as? CustomPKCanvasView)?.setupBackgroundImage(image: bgImage)
+                  
+                }
+            } else {
+                (canvasView as? CustomPKCanvasView)?.setupBackgroundImage(image: nil)
+               
+            }
+            
+         
         }
         
         
@@ -364,7 +392,6 @@ extension LayerCanvasView.Coordinator {
             }
         }
         
-        
         sender.rotation = 0
     }
     
@@ -400,9 +427,12 @@ extension LayerCanvasView.Coordinator {
         if isShapeToolSelected {
             
             if let tappedStroke = canvasView.drawing.strokes.last(where: { $0.renderBounds.contains(locationInDrawing) }) {
-                EditorModel.shared.selectedStroke = tappedStroke
-                print("✅ Stroke selezionato con ID: \(tappedStroke)")
-                updateHandlesOverlay(for: canvasView)
+                
+                if EditorModel.shared.selectedStroke?.randomSeed != tappedStroke.randomSeed {
+                    EditorModel.shared.selectedStroke = tappedStroke
+                    print("✅ Stroke selezionato con ID: \(tappedStroke)")
+                    updateHandlesOverlay(for: canvasView)
+                }
                 return
             } else {
                 if let _ = EditorModel.shared.selectedStroke {
@@ -457,8 +487,7 @@ extension LayerCanvasView.Coordinator {
          }*/
         //canvasView.addSubview(imageView)
     }
-    
-    
+  
 }
 
 
@@ -495,10 +524,10 @@ extension LayerCanvasView.Coordinator: PKCanvasViewDelegate, PKToolPickerObserve
         guard parent.model.id == parent.activeCanvasId,
               let canvasView = scrollView as? PKCanvasView else { return }
         
-        guard !EditorModel.shared.isApplyingProgrammaticChange else {
+        /*guard !EditorModel.shared.isApplyingProgrammaticChange else {
             print ("isApplyingProgrammaticChange")
             return
-        }
+        }*/
         print("scrollViewDidZoom")
         
         let isActive = parent.model.id == parent.activeCanvasId
@@ -511,12 +540,12 @@ extension LayerCanvasView.Coordinator: PKCanvasViewDelegate, PKToolPickerObserve
     }
     
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
-        guard parent.model.id == parent.activeCanvasId else { return }
+        guard parent.model.id == parent.activeCanvasId, let canvasView = scrollView as? PKCanvasView else { return }
         
-        guard !EditorModel.shared.isApplyingProgrammaticChange else {
+        /* guard !EditorModel.shared.isApplyingProgrammaticChange else {
             print ("isApplyingProgrammaticChange")
             return
-        }
+        }*/
         
         print("scrollViewDidScroll")
         let isActive = parent.model.id == parent.activeCanvasId
@@ -525,7 +554,7 @@ extension LayerCanvasView.Coordinator: PKCanvasViewDelegate, PKToolPickerObserve
             Task{
                 EditorModel.shared.contentOffset = scrollView.contentOffset
                 EditorModel.shared.propagateScrollOffset(scrollView.contentOffset, from: parent.model.id)
-                //updateHandlesOverlay(for: canvasView)
+                   //updateHandlesOverlay(for: canvasView)
             }
         }
     }

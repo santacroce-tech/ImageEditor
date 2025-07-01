@@ -130,10 +130,12 @@ extension EditorModel {
         projectName = defProjectName
         addLayer()
         activeCanvasId = 1
+        backgroundImage = nil
         self.projectID = UUID()
         contentOffset = .zero
+        contentSize = CGSize(width: 1024, height: 1024)
         showTextInput = false
-        backgroundColor = .white
+        backgroundColor = .clear
         
     }
     
@@ -176,7 +178,7 @@ extension EditorModel {
     func exportToGallery()  {
         if let compositeImage = renderLayers() {
             UIImageWriteToSavedPhotosAlbum(compositeImage, self, #selector(imageSaveCompletion), nil)
-            EditorModel.shared.showPhotoPicker = true
+            EditorModel.shared.showGallery = true
         }
     }
     
@@ -291,6 +293,33 @@ extension EditorModel {
             saveProject()
             onPublish?(image)
         }
+    }
+    
+    func exit(){
+        saveProject()
+        onExit?()
+        
+       
+    }
+    
+    func newProjectFromImage(_ image: UIImage) {
+        // Resetta lo stato del progetto
+        layers.removeAll()
+        contentOffset = .zero
+        zoomScale = 1.0
+        
+        // Imposta la dimensione della tela sulla dimensione dell'immagine
+        self.contentSize = image.size
+        
+        // Salva l'immagine nel modello. Le viste reagiranno a questo cambiamento.
+        self.backgroundImage = image
+        
+        // Aggiunge il primo layer
+        addLayer()
+        activeCanvasId = layers.first?.id ?? 1
+        
+        // Forza la ricostruzione della UI
+        projectID = UUID()
     }
 }
 

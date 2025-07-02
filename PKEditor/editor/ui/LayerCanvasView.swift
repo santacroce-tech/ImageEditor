@@ -352,6 +352,12 @@ extension LayerCanvasView.Coordinator {
         // We only act on the active canvas
         guard parent.model.id == parent.activeCanvasId,
               let canvasView = sender.view as? PKCanvasView else { return }
+        
+        if parent.localToolPicker.isRulerActive {
+            print("handleRotation isRulerActive")
+            return
+        }
+            
         print("handleRotation")
         
         
@@ -376,6 +382,13 @@ extension LayerCanvasView.Coordinator {
             
             let  layer = parent.model
             
+            
+            EditorModel.shared.performAndRegisterDrawing(
+                newDrawing,
+                on:layer,
+                actionName: "handleRotation"
+            )
+            /*
             if sender.state == .ended {
                 EditorModel.shared.performAndRegisterDrawing(
                     newDrawing,
@@ -389,7 +402,7 @@ extension LayerCanvasView.Coordinator {
             }
             if sender.state == .cancelled || sender.state == .failed {
                 EditorModel.shared.isApplyingProgrammaticChange = false
-            }
+            }*/
         }
         
         sender.rotation = 0
@@ -562,10 +575,10 @@ extension LayerCanvasView.Coordinator: PKCanvasViewDelegate, PKToolPickerObserve
     
     func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
         print ("canvasViewDrawingDidChange")
-        guard !EditorModel.shared.isApplyingProgrammaticChange else {
-            print ("isApplyingProgrammaticChange")
-            return
-        }
+        //guard !EditorModel.shared.isApplyingProgrammaticChange else {
+        //    print ("isApplyingProgrammaticChange")
+        //    return
+        //}
         
         DispatchQueue.main.async {
             self.parent.model.drawing = canvasView.drawing

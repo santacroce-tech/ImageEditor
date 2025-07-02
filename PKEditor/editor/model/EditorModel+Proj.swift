@@ -14,14 +14,16 @@ struct ProjectData: Codable {
     let contentSize: CGSize
     let contentOffset: CGPoint
     let backgroundColor:UIColor
+    let backgroundImage:UIImage?
 
     let layers: [LayerCanvasModel]
     
     enum CodingKeys: String, CodingKey {
            case contentSize
            case contentOffset
-           case backgroundColorData // Salveremo il colore come Data
-           case layers
+            case backgroundColorData // Salveremo il colore come Data
+            case backgroundImageData
+            case layers
        }
     
     // 2. Implementiamo l'inizializzatore per la decodifica (da JSON a oggetto).
@@ -35,13 +37,16 @@ struct ProjectData: Codable {
           
           do {
               let colorData = try container.decode(Data.self, forKey: .backgroundColorData)
-              // ...e poi usiamo la nostra funzione helper per riconvertirli in un UIColor.
-              // Se la decodifica fallisce, usiamo il nero come colore di default.
               backgroundColor = UIColor.decode(from: colorData) ?? .black
           }catch let error {
               print("initdecoder")
               print(error)
               backgroundColor = .white
+          }
+          if let imageData = try container.decodeIfPresent(Data.self, forKey: .backgroundImageData) {
+              self.backgroundImage = UIImage(data: imageData)
+          } else {
+              self.backgroundImage = nil
           }
       }
       
@@ -59,13 +64,18 @@ struct ProjectData: Codable {
           if let colorData = backgroundColor.encode() {
               try container.encode(colorData, forKey: .backgroundColorData)
           }
+          if let imageData = backgroundImage?.pngData() {
+                     try container.encode(imageData, forKey: .backgroundImageData)
+                 }
+         
       }
       
       // Un init personalizzato per quando creiamo i dati da salvare
-      init(contentSize: CGSize, contentOffset: CGPoint, backgroundColor: UIColor, layers: [LayerCanvasModel]) {
+      init(contentSize: CGSize, contentOffset: CGPoint, backgroundColor: UIColor, backgroundImage: UIImage?,layers: [LayerCanvasModel]) {
           self.contentSize = contentSize
           self.contentOffset = contentOffset
           self.backgroundColor = backgroundColor
+          self.backgroundImage = backgroundImage
           self.layers = layers
       }
 }
@@ -95,7 +105,7 @@ extension EditorModel {
         let thumbFilename = "\(newName).png"
         let thumbUrl = getDocumentsDirectory().appendingPathComponent(thumbFilename)
         
-        let projectData = ProjectData(contentSize: self.contentSize, contentOffset: self.contentOffset,backgroundColor: backgroundColor,layers: self.layers)
+        let projectData = ProjectData(contentSize: self.contentSize, contentOffset: self.contentOffset,backgroundColor: backgroundColor,backgroundImage:self.backgroundImage,layers: self.layers)
         
         let encoder = JSONEncoder()
         do {
@@ -161,7 +171,8 @@ extension EditorModel {
             self.contentOffset = loadedProject.contentOffset
             self.layers = loadedProject.layers
             self.backgroundColor = loadedProject.backgroundColor
-                 
+            self.backgroundImage = loadedProject.backgroundImage
+          
             contentOffset = .zero
             
             activeCanvasId = 1

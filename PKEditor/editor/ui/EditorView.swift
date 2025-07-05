@@ -71,10 +71,10 @@ struct EditorView: View {
                     EditingActionsPanel(
                         onRotateLeft: {
                             // Call the model's function for the active layer
-                            model.rotateStroke( byDegrees: -5)
+                            model.rotate( byDegrees: -5)
                         },
                         onRotateRight: {
-                            model.rotateStroke( byDegrees: 5)
+                            model.rotate( byDegrees: 5)
                         }
                     )
                     .padding(.top, 10)
@@ -97,6 +97,9 @@ struct EditorView: View {
                 
                 .background(Color.gray)
                 .id(model.projectID)
+            }
+            .onAppear() {
+                model.newProject()
             }
             .onDisappear {
                 // Save current state to UserDefaults

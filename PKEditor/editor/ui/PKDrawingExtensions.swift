@@ -155,7 +155,7 @@ extension PKCanvasView {
     
     private func createStrokesFromPath(_ path: UIBezierPath, tool: PKInkingTool) -> [PKStroke] {
         // Implementazione semplificata - converte il path in punti per PKStroke
-        var points: [PKStrokePoint] = []
+        //var points: [PKStrokePoint] = []
         
         /*
         // Questo è un esempio semplificato

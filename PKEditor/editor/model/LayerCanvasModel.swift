@@ -14,10 +14,11 @@ class LayerCanvasModel:ObservableObject,Identifiable, Codable {
     @Published var visible = true
     @Published var opacity = 1.0
     @Published var currentCanvasId: Int 
-    @Published var drawing: PKDrawing = PKDrawing()
+    //@Published
+    var drawing: PKDrawing = PKDrawing()
     @Published var drawingPolicy: PKCanvasViewDrawingPolicy = .anyInput
     @Published var pickerVisibility = false
-    var canvas:PKCanvasView?
+    var canvas:CustomPKCanvasView?
     var index = 0
     var id:Int {currentCanvasId}
     

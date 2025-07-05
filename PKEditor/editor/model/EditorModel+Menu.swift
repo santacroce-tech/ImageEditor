@@ -44,8 +44,8 @@ extension EditorModel {
        
         
         let recentActions = EditorModel.shared.recentProjects.map{ item in
-            let recentAction = UIAction(title: item, image: nil) { _ in
-                EditorModel.shared.loadProject(item )
+            let recentAction = UIAction(title: item.name, image: nil) { _ in
+                EditorModel.shared.loadProject(item.name )
                
             }
             return recentAction

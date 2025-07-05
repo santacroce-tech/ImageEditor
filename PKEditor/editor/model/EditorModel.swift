@@ -10,11 +10,6 @@ import Combine
 import UIKit
 @preconcurrency import PencilKit
 
-/*struct ProjectData: Codable {
- let contentSize: CGSize
- let contentOffset: CGPoint
- let layers: [LayerCanvasModel]
- }*/
 
 
 @MainActor
@@ -23,21 +18,23 @@ class EditorModel: NSObject,ObservableObject {
     let defProjectName: String = "drawingProject"
     
     @Published var layers: [LayerCanvasModel] = []
-    @Published var shapeStampWrapper = ShapeStampWrapper()
-    @Published var textStampWrapper = TextStampWrapper()
+    //@Published
+    var shapeStampWrapper = ShapeStampWrapper()
+    //@Published
+    var textStampWrapper = TextStampWrapper()
     @Published var projectID = UUID()
     @Published var projectName: String = ""
     
     @Published var showAccessorySheet: Bool = false
     @Published var showPhotoPicker = false
     @Published var showGallery = false
-    
     @Published var showDocPicker = false
     @Published var showTextInput = false
     @Published var saveProjectAs: Bool = false
     @Published var showLayerEditorDetail: Bool = false
     @Published var showFontPicker:Bool = false
     @Published var showFontSheet = false
+    
     @Published var activeCanvasId: Int = 1
     @Published var contentSize: CGSize = CGSize(width: 1024, height: 1024)
     @Published var currentFont: UIFont = UIFont.systemFont(ofSize: 64, weight: .regular){
@@ -45,51 +42,42 @@ class EditorModel: NSObject,ObservableObject {
             saveFontToUserDefaults()
         }
     }
-    //@Published var currentTextColor: UIColor = .black // Default a nero
+    @Published var selectedStroke: PKStroke? = nil
+ 
     @Published var backgroundImage: UIImage?
     @Published var backgroundColor = UIColor.white
-    /*{
-        didSet {
-            setBackgroundColor()
-        }
-    }*/
+    
     
     var contentOffset: CGPoint = .zero
     var zoomScale: CGFloat = 1.0
-    let minimumZoomScale = 0.01
+    let minimumZoomScale = 0.3
     let maximumZoomScale = 10.0
-    //let minimumZoomScale = 1.0
-    //let maximumZoomScale = 1.0
  
     private let fontNameKey = "EditorCurrentFontName"
     private let fontSizeKey = "EditorCurrentFontSize"
   
-    var recentProjects:[String] = []
+    var recentProjects:[ProjectItem] = []
     
     var toolPicker: PKToolPicker?
     var mainMenu:UIMenu!
+    
     var onPublish: ((_ image:UIImage) -> Void)? = nil
     var onExit: (() -> Void)? = nil
  
-    @Published var selectedStroke: PKStroke? = nil
     var locationInDrawing : CGPoint = .zero
     
-    
-    var originalStrokeForUndo: PKStroke?
-    var isApplyingProgrammaticChange = false
-
     
     override init() {
         super.init()
         projectName = defProjectName
-        loadFontFromUserDefaults()
         addLayer()
         activeCanvasId = 1
-        self.recentProjects = getRecentProjects()
-        if self.recentProjects.count > 0 {
+        recentProjects = getRecentProjects()
+        loadFontFromUserDefaults()
+        /*if self.recentProjects.count > 0 {
             let name = self.recentProjects[0]
             loadProject(name)
-        }
+        }*/
     }
     
     func addLayer() {

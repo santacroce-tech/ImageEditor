@@ -28,7 +28,7 @@ public struct SUIFontPicker: UIViewControllerRepresentable {
             // In this case, no filter is applied, and all fonts will be shown.
             print("Could not determine the device's language code. Showing all fonts.")
         }
-        configuration.languageFilter
+        
         let vc = UIFontPickerViewController(configuration: configuration)
         vc.delegate = context.coordinator
         return vc

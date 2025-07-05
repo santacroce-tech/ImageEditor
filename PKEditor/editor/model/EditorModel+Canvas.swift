@@ -81,8 +81,7 @@ extension EditorModel {
             }
             
         
-        // 3. Imposta il flag per silenziare il delegate
-        self.isApplyingProgrammaticChange = true
+       
         
         // 4. SINCRONIZZA ATOMICAMENTE
         // Aggiorna prima il modello
@@ -90,10 +89,7 @@ extension EditorModel {
         // Subito dopo, aggiorna la vista con lo stesso identico oggetto
         layer.canvas?.drawing = newDrawing
         
-        // 5. Rilascia il flag
-        self.isApplyingProgrammaticChange = false
-        
-        // 6. Restituisci lo stato precedente per l'UndoManager
+       
         return oldDrawing
     }
     
@@ -103,33 +99,16 @@ extension EditorModel {
         on layer: LayerCanvasModel,
         actionName: String // Es. "Aggiungi Forma" o "Disegno"
     ) {
-        // Prendi lo stato attuale DAL MODELLO
-        //let oldDrawing = layer.drawing
-
-        // Non fare nulla se non c'è un cambiamento reale
-        //guard oldDrawing.strokes != newDrawing.strokes else { return }
-
-        // Esegui il cambiamento usando il nostro setter privato
         let oldDrawing = self.updateDrawingAtomically(to: newDrawing, on: layer)
-       
-        // Registra l'azione di UNDO con l'UndoManager.
-        // L'UndoManager gestirà il REDO automaticamente!
         layer.canvas?.undoManager?.registerUndo(withTarget: self) { target in
-            // L'azione di UNDO è semplicemente eseguire di nuovo questa stessa funzione
-            // con il disegno vecchio. L'UndoManager capirà che questa è un'operazione
-            // di undo e la metterà nello stack di REDO.
-            target.performAndRegisterDrawing(oldDrawing, on: layer, actionName: actionName)
+        target.performAndRegisterDrawing(oldDrawing, on: layer, actionName: actionName)
         }
 
-        // Imposta il nome dell'azione (visibile nel menu Modifica -> Annulla "Azione")
-        // Lo facciamo solo se non stiamo già eseguendo un undo o un redo.
         if let undoManager = layer.canvas?.undoManager, !undoManager.isUndoing, !undoManager.isRedoing {
             undoManager.setActionName(actionName)
         }
     }
-    
-
- 
+  
     func setBackgroundColor(){
         for layer in self.layers {
             if let canvas = layer.canvas {
@@ -174,6 +153,16 @@ extension EditorModel {
         
         return canvasPoint
     }
+    
+    func rotate(byDegrees degrees: Double){
+        if let _ = selectedStroke {
+            rotateStroke(byDegrees: degrees)
+        }else{
+            rotateDrawing(byDegrees: degrees)
+        }
+    }
+   
+    
     func rotateStroke(byDegrees degrees: Double){
         let rotation = CGFloat(degrees) * .pi / 180.0
         rotateStroke(rotation,state: UIRotationGestureRecognizer.State.ended)
@@ -186,7 +175,6 @@ extension EditorModel {
         guard let selectedStroke = selectedStroke else { return }
        
         //if state == .began {
-        //    EditorModel.shared.isApplyingProgrammaticChange = true
         //}
         
         print("rotateStroke")
@@ -223,10 +211,9 @@ extension EditorModel {
                 actionName: "rotateStroke"
             )
               
-            // this must be @Published
+            
             EditorModel.shared.selectedStroke =  canvasView.drawing.strokes[strokeIndex]
-            //EditorModel.shared.isApplyingProgrammaticChange = false
-         
+          
             Task {
                 if let canvas = layer.canvas, let coordinator = canvas.delegate as? LayerCanvasView.Coordinator {
                     coordinator.updateHandlesOverlay(for: canvas)
@@ -236,7 +223,7 @@ extension EditorModel {
             layer.canvas?.drawing = newDrawing
           
         }else{
-            //EditorModel.shared.isApplyingProgrammaticChange = true
+           
          
         }*/
         
@@ -244,8 +231,52 @@ extension EditorModel {
     }
     
     
+    func rotateDrawing(_ rotation: CGFloat,state:UIRotationGestureRecognizer.State?){
+        
+        guard let layer = layers.first(where: { $0.id == activeCanvasId }) , let canvasView = layer.canvas else { return }
+    
+        let drawingBounds = canvasView.drawing.bounds
+        guard !drawingBounds.isEmpty else { return }
+        
+        let center = CGPoint(x: drawingBounds.midX, y: drawingBounds.midY)
+        
+        var transform = CGAffineTransform.identity
+        transform = transform.translatedBy(x: center.x, y: center.y)
+        transform = transform.rotated(by: rotation)
+        transform = transform.translatedBy(x: -center.x, y: -center.y)
+        
+        let newDrawing = canvasView.drawing.transformed(using: transform)
+        
+        //let  layer = parent.model
+        
+        
+        EditorModel.shared.performAndRegisterDrawing(
+            newDrawing,
+            on:layer,
+            actionName: "handleRotation"
+        )
+        /*
+        if sender.state == .ended {
+            EditorModel.shared.performAndRegisterDrawing(
+                newDrawing,
+                on:layer,
+                actionName: "handleRotation"
+            )
+            
+        }else{
+            layer.canvas?.drawing = newDrawing
+        }
+        if sender.state == .cancelled || sender.state == .failed {
+        }*/
+    }
+  
     func rotateDrawing(byDegrees degrees: Double) {
         
+        
+        let rotation = CGFloat(degrees) * .pi / 180.0
+        rotateDrawing(rotation,state: UIRotationGestureRecognizer.State.ended)
+   
+        /*
         guard let layer = layers.first(where: { $0.id == activeCanvasId }) else { return }
         var drawing = layer.canvas!.drawing
         
@@ -265,7 +296,7 @@ extension EditorModel {
         
         drawing.transform(using:transform)
         
-        if let canvas = layer.canvas {
+        //if let canvas = layer.canvas {
             Task { @MainActor in
                 //EditorModel.shared.setNewDrawingUndoable(drawing,to:canvas)
                 //EditorModel.shared.setNewDrawingUndoable(drawing,to:layer)
@@ -276,9 +307,8 @@ extension EditorModel {
                 )
             }
             
-        }
-        
-        //layers[layerIndex].drawing = drawing
+        //}
+        */
         
     }
     

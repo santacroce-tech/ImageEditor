@@ -10,6 +10,12 @@ import Combine
 import UIKit
 import PencilKit
 
+struct ProjectItem {
+    let name: String
+    let url: URL
+    let image:URL
+}
+
 struct ProjectData: Codable {
     let contentSize: CGSize
     let contentOffset: CGPoint
@@ -223,7 +229,8 @@ extension EditorModel {
          
          let renderer = UIGraphicsImageRenderer(bounds: totalBounds)
          */
-        let renderer = UIGraphicsImageRenderer(size: contentSize)
+        
+         let renderer = UIGraphicsImageRenderer(size: contentSize)
          let compositeImage = renderer.image { context in
              // Disegniamo i layer uno sopra l'altro, dal basso verso l'alto
              
@@ -256,7 +263,7 @@ extension EditorModel {
      }
     
     
-    func getRecentProjects() -> [String] {
+    func getRecentProjects() -> [ProjectItem] {
         self.recentProjects.removeAll()
      
         // Otteniamo il percorso della nostra cartella Documents
@@ -287,11 +294,18 @@ extension EditorModel {
             let sortedFiles = jsonFiles.sorted { $0.modDate > $1.modDate }
             
             // 4. Estraiamo solo i nomi dei file, rimuovendo l'estensione .json
-            var projectNames = sortedFiles.map { $0.url.deletingPathExtension().lastPathComponent }
             
-            print("✅ Trovati progetti recenti: \(projectNames)")
-            projectNames = Array(projectNames.prefix(10))
-            return projectNames
+            
+            var projectItems:[ProjectItem] = sortedFiles.map {
+                
+                let deletedExt = $0.url.deletingPathExtension()
+                let projectItem =  ProjectItem(name:deletedExt.lastPathComponent,url: $0.url,image: $0.url.appendingPathExtension("png"))
+                return projectItem
+            }
+            
+            print("✅ Trovati progetti recenti: \(projectItems)")
+            projectItems = Array(projectItems.prefix(10))
+            return projectItems
             
         } catch {
             print("❌ Errore durante la lettura dei file: \(error.localizedDescription)")
@@ -324,7 +338,8 @@ extension EditorModel {
         
         // Salva l'immagine nel modello. Le viste reagiranno a questo cambiamento.
         self.backgroundImage = image
-        
+        self.backgroundColor = .clear
+       
         // Aggiunge il primo layer
         addLayer()
         activeCanvasId = layers.first?.id ?? 1

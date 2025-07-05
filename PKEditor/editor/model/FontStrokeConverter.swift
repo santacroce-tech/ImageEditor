@@ -56,7 +56,7 @@ struct FontStrokeConverter {
          
          // --- Passaggio C: Converte il Path finale in PKStroke(s) (invariato) ---
          
-        let subpaths = TessellateStroke.getSubpaths(from: transformedPath)
+         let subpaths = TessellateStroke.getSubpaths(from: transformedPath)
          var finalStrokes: [PKStroke] = []
          let ink = PKInk(.pen, color: color)
 

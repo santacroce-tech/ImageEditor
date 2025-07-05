@@ -52,7 +52,7 @@ struct LayerCanvasView: UIViewRepresentable {
         
         
         // Create a custom tool item using the configuration.
-        let starItem = PKToolPickerCustomItem(configuration: config)
+        //let starItem = PKToolPickerCustomItem(configuration: config)
         
         if let picker = EditorModel.shared.toolPicker {
             _localToolPicker = State(initialValue: picker)
@@ -145,6 +145,9 @@ struct LayerCanvasView: UIViewRepresentable {
       
         context.coordinator.updateBackgroundImage(for: canvasView)
         
+        canvasView.onLayout = {
+             //calculateViewInset(canvasView)
+        }
         // --- AGGIUNGI QUESTO BLOCCO PER IL DEBUG ---
         /*  let debugView = UIView(frame: canvasView.bounds)
          debugView.backgroundColor = UIColor.systemPink.withAlphaComponent(0.3) // Sfondo colorato per vederla
@@ -165,16 +168,12 @@ struct LayerCanvasView: UIViewRepresentable {
         }
         
         let shouldBeActive = (model.currentCanvasId == activeCanvasId)
-        
-        //if let _ = uiView.undoManager{
-        //    EditorModel.shared.setActiveUndoManager(uiView.undoManager)
-        //}
+      
+        //calculateViewInset(uiView)
+      
         if shouldBeActive { //&& model.pickerVisibility
             // This canvas should be active: make its local tool picker visible
-            
-            /*if EditorModel.shared.activeUndoManager !== uiView.undoManager {
-             EditorModel.shared.setActiveUndoManager(uiView.undoManager)
-             }*/
+          
             
             DispatchQueue.main.async{
                 localToolPicker.setVisible(true, forFirstResponder: uiView)
@@ -215,8 +214,34 @@ struct LayerCanvasView: UIViewRepresentable {
                 uiView.isOpaque = false
             }
         }
-        context.coordinator.updateBackgroundImage(for: uiView)
+        context.coordinator.updateBackgroundImage(for: uiView as! CustomPKCanvasView)
         
+    }
+    
+    @MainActor
+    private func calculateViewInset(_ canvas: PKCanvasView) {
+        let canvasBoundsSize = canvas.bounds.size
+        let contentSize = canvas.contentSize
+        let zoom = canvas.zoomScale
+
+        let scaledContentWidth = contentSize.width * zoom
+        let scaledContentHeight = contentSize.height * zoom
+
+        let horizontalPadding = (canvasBoundsSize.width - scaledContentWidth) / 2.0
+        let verticalPadding = (canvasBoundsSize.height - scaledContentHeight) / 2.0
+
+        let topInset = max(0, verticalPadding)
+        let leftInset = max(0, horizontalPadding)
+
+        // --- LA CORREZIONE È QUI ---
+        // Impostiamo un padding simmetrico sia per la parte superiore/inferiore
+        // sia per quella sinistra/destra.
+        let newInsets = UIEdgeInsets(top: topInset, left: leftInset, bottom: topInset, right: leftInset)
+
+        // Applichiamo i nuovi insets solo se sono cambiati, per sicurezza.
+        if canvas.contentInset != newInsets {
+            canvas.contentInset = newInsets
+        }
     }
     
     // New: dismantleUIView for cleanup when the UIView is removed from the hierarchy
@@ -251,10 +276,7 @@ struct LayerCanvasView: UIViewRepresentable {
          }
          }*/
     }
-    
-    // All'interno di LayerCanvasView.swift
-    
-    
+        
     class Coordinator: NSObject, UIGestureRecognizerDelegate {
         var parent: LayerCanvasView
         private var isRotating = false
@@ -278,24 +300,18 @@ struct LayerCanvasView: UIViewRepresentable {
         }
         
         
-        func updateBackgroundImage(for canvasView: PKCanvasView) {
+        func updateBackgroundImage(for canvasView: CustomPKCanvasView) {
             // Controlla se questo è il layer più in basso (index 0)
             if parent.index == 0 {
                 // Se è il layer di sfondo e l'immagine non è ancora stata aggiunta...
-                
-                
                 if backgroundImageView == nil, let bgImage = EditorModel.shared.backgroundImage {
-                    
-                    
-                    (canvasView as? CustomPKCanvasView)?.setupBackgroundImage(image: bgImage)
+                    canvasView.setupBackgroundImage(image: bgImage)
                   
                 }
             } else {
-                (canvasView as? CustomPKCanvasView)?.setupBackgroundImage(image: nil)
+                canvasView.setupBackgroundImage(image: nil)
                
             }
-            
-         
         }
         
         
@@ -333,8 +349,6 @@ struct LayerCanvasView: UIViewRepresentable {
 
 extension LayerCanvasView.Coordinator {
     
-    
-    
     func setUpGestureRecognizers(on view: UIView) {
         tapGestureRecognizer = CanvasGestureRecognizer(target: self, action: #selector(handleTap(_:)))
         view.addGestureRecognizer(tapGestureRecognizer!)
@@ -362,47 +376,15 @@ extension LayerCanvasView.Coordinator {
         
         
         if sender.state == .began {
-            EditorModel.shared.isApplyingProgrammaticChange = true
+            //EditorModel.shared.isApplyingProgrammaticChange = true
         }
         
         if let _ = EditorModel.shared.selectedStroke {
             EditorModel.shared.rotateStroke(sender.rotation,state: sender.state)
         } else {
-            let drawingBounds = canvasView.drawing.bounds
-            guard !drawingBounds.isEmpty else { return }
             
-            let center = CGPoint(x: drawingBounds.midX, y: drawingBounds.midY)
-            
-            var transform = CGAffineTransform.identity
-            transform = transform.translatedBy(x: center.x, y: center.y)
-            transform = transform.rotated(by: sender.rotation)
-            transform = transform.translatedBy(x: -center.x, y: -center.y)
-            
-            let newDrawing = canvasView.drawing.transformed(using: transform)
-            
-            let  layer = parent.model
-            
-            
-            EditorModel.shared.performAndRegisterDrawing(
-                newDrawing,
-                on:layer,
-                actionName: "handleRotation"
-            )
-            /*
-            if sender.state == .ended {
-                EditorModel.shared.performAndRegisterDrawing(
-                    newDrawing,
-                    on:layer,
-                    actionName: "handleRotation"
-                )
-                EditorModel.shared.isApplyingProgrammaticChange = false
-                
-            }else{
-                layer.canvas?.drawing = newDrawing
-            }
-            if sender.state == .cancelled || sender.state == .failed {
-                EditorModel.shared.isApplyingProgrammaticChange = false
-            }*/
+            EditorModel.shared.rotateDrawing(sender.rotation,state: sender.state)
+
         }
         
         sender.rotation = 0
@@ -474,8 +456,7 @@ extension LayerCanvasView.Coordinator {
             let  layer = parent.model
             
             Task { @MainActor in
-                //EditorModel.shared.setNewDrawingUndoable(newDrawing,to:layer)
-                //EditorModel.shared.setNewDrawingUndoable(newDrawing,to:canvasView)
+             
                 EditorModel.shared.performAndRegisterDrawing(
                     newDrawing,
                     on:layer,
@@ -501,14 +482,7 @@ extension LayerCanvasView.Coordinator {
         //canvasView.addSubview(imageView)
     }
   
-}
-
-
-// MARK: - PencilKit Delegates
-extension LayerCanvasView.Coordinator: PKCanvasViewDelegate, PKToolPickerObserver {
-    
-    @MainActor
-    func updateHandlesOverlay(for canvasView: PKCanvasView) {
+    @MainActor func updateHandlesOverlay(for canvasView: PKCanvasView) {
         // Prima rimuoviamo sempre la vecchia vista
         handlesHostingController?.view.removeFromSuperview()
         handlesHostingController = nil
@@ -532,82 +506,6 @@ extension LayerCanvasView.Coordinator: PKCanvasViewDelegate, PKToolPickerObserve
             self.handlesHostingController = hostingController
         }
     }
-    
-    func scrollViewDidZoom(_ scrollView: UIScrollView) {
-        guard parent.model.id == parent.activeCanvasId,
-              let canvasView = scrollView as? PKCanvasView else { return }
-        
-        /*guard !EditorModel.shared.isApplyingProgrammaticChange else {
-            print ("isApplyingProgrammaticChange")
-            return
-        }*/
-        print("scrollViewDidZoom")
-        
-        let isActive = parent.model.id == parent.activeCanvasId
-        
-        if isActive {
-            EditorModel.shared.zoomScale = scrollView.zoomScale
-            EditorModel.shared.propagateZoomScale(scrollView.zoomScale, from: parent.model.id)
-            updateHandlesOverlay(for: canvasView)
-        }
-    }
-    
-    func scrollViewDidScroll(_ scrollView: UIScrollView) {
-        guard parent.model.id == parent.activeCanvasId, let canvasView = scrollView as? PKCanvasView else { return }
-        
-        /* guard !EditorModel.shared.isApplyingProgrammaticChange else {
-            print ("isApplyingProgrammaticChange")
-            return
-        }*/
-        
-        print("scrollViewDidScroll")
-        let isActive = parent.model.id == parent.activeCanvasId
-        
-        if isActive {
-            Task{
-                EditorModel.shared.contentOffset = scrollView.contentOffset
-                EditorModel.shared.propagateScrollOffset(scrollView.contentOffset, from: parent.model.id)
-                   //updateHandlesOverlay(for: canvasView)
-            }
-        }
-    }
-    
-    
-    func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
-        print ("canvasViewDrawingDidChange")
-        //guard !EditorModel.shared.isApplyingProgrammaticChange else {
-        //    print ("isApplyingProgrammaticChange")
-        //    return
-        //}
-        
-        DispatchQueue.main.async {
-            self.parent.model.drawing = canvasView.drawing
-        }
-    }
-    
-    func canvasViewDidEndUsingTool(_ canvasView: PKCanvasView) {
-        // Questo è il momento giusto per notificare al resto dell'app
-        // che è avvenuta una modifica "permanente".
-        // La nostra funzione di notifica globale è perfetta per questo.
-        //EditorModel.shared.notifyLayerDidChange()
-        //print("Tratto finalizzato. Notifica inviata per aggiornare i thumbnail.")
-    }
-    
-    // Questo metodo viene chiamato OGNI VOLTA che cambi strumento.
-    func toolPickerSelectedToolItemDidChange(_ toolPicker: PKToolPicker) {
-        // Chiamiamo la nostra funzione di aggiornamento, passandole il picker attuale.
-        
-        guard let canvasView = parent.model.canvas else {
-            print("Error: CanvasView not found in coordinator.")
-            return
-        }
-        Task{ @MainActor in
-            EditorModel.shared.selectedStroke = nil
-            updateHandlesOverlay(for: canvasView)
-        }
-        updateGestureRecognizerEnablement(using: toolPicker)
-    }
-    
     // Questa è la funzione chiave, ora implementata correttamente.
     @MainActor func updateGestureRecognizerEnablement(using toolPicker: PKToolPicker) {
         
@@ -631,7 +529,89 @@ extension LayerCanvasView.Coordinator: PKCanvasViewDelegate, PKToolPickerObserve
             print("Strumento Timbro DISATTIVATO. HandleTap è disabilitato.")
         }
     }
+ 
+}
+
+
+// MARK: - PencilKit Delegates
+extension LayerCanvasView.Coordinator: PKCanvasViewDelegate, PKToolPickerObserver {
     
+    func scrollViewDidEndZooming(_ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat) {
+        // Agiamo solo sulla tela attiva
+        guard parent.model.id == parent.activeCanvasId else { return }
+        print("scrollViewDidEndZooming")
+        //,let canvasView = scrollView as? PKCanvasView
+        let isActive = parent.model.id == parent.activeCanvasId
+        
+        if isActive {
+            //EditorModel.shared.zoomScale = scrollView.zoomScale
+            //EditorModel.shared.propagateZoomScale(scrollView.zoomScale, from: parent.model.id)
+            //updateHandlesOverlay(for: canvasView)
+        }
+        // Chiamiamo la nostra funzione di calcolo per assicurare il centraggio finale.
+        //DispatchQueue.main.async {
+        //    self.parent.calculateViewInset(canvasView)
+        //}
+    }
+    
+    func scrollViewDidZoom(_ scrollView: UIScrollView) {
+        guard parent.model.id == parent.activeCanvasId,
+              let canvasView = scrollView as? PKCanvasView else { return }
+       
+        print("scrollViewDidZoom")
+        
+        let isActive = parent.model.id == parent.activeCanvasId
+        
+        if isActive {
+            EditorModel.shared.zoomScale = scrollView.zoomScale
+            EditorModel.shared.propagateZoomScale(scrollView.zoomScale, from: parent.model.id)
+            updateHandlesOverlay(for: canvasView)
+        }
+    }
+    
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        //guard parent.model.id == parent.activeCanvasId, let canvasView = scrollView as? PKCanvasView else { return }
+       
+        
+        print("scrollViewDidScroll")
+        let isActive = parent.model.id == parent.activeCanvasId
+        
+        if isActive {
+            Task{
+                EditorModel.shared.contentOffset = scrollView.contentOffset
+                EditorModel.shared.propagateScrollOffset(scrollView.contentOffset, from: parent.model.id)
+                   //updateHandlesOverlay(for: canvasView)
+            }
+        }
+    }
+    
+    
+    func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
+        print ("canvasViewDrawingDidChange")
+        
+        DispatchQueue.main.async {
+            self.parent.model.drawing = canvasView.drawing
+        }
+    }
+    
+    func canvasViewDidEndUsingTool(_ canvasView: PKCanvasView) {
+        
+    }
+    
+    func toolPickerSelectedToolItemDidChange(_ toolPicker: PKToolPicker) {
+        
+        guard let canvasView = parent.model.canvas else {
+            print("Error: CanvasView not found in coordinator.")
+            return
+        }
+        Task{ @MainActor in
+            EditorModel.shared.selectedStroke = nil
+            updateHandlesOverlay(for: canvasView)
+        }
+        updateGestureRecognizerEnablement(using: toolPicker)
+    }
+    
+     
     // Lasciamo questo metodo vuoto per ora, ma è importante che ci sia.
     func toolPickerIsRulerActiveDidChange(_ toolPicker: PKToolPicker) {
         

@@ -8,78 +8,9 @@
 
 import PencilKit
 
-/*
-class CustomPKCanvasView: PKCanvasView {
-    private let backgroundLayer = CALayer()
-    private var backgroundImage: UIImage?
-    
-    override func awakeFromNib() {
-        super.awakeFromNib()
-        setupBackground()
-    }
-    
-    // Metodo per impostare l'immagine di background
-    func setBackgroundImage(_ image: UIImage) {
-        backgroundImage = image
-        updateBackgroundImage()
-    }
-    
-    private func setupBackground() {
-        backgroundLayer.frame = CGRect(origin: .zero, size: contentSize)
-        layer.insertSublayer(backgroundLayer, at: 0)
-    }
-    
-    private func updateBackgroundImage() {
-        guard let image = backgroundImage else { return }
-        
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        
-        backgroundLayer.contents = image.cgImage
-        backgroundLayer.contentsScale = UIScreen.main.scale
-        
-        // Opzioni per come l'immagine si adatta:
-        
-        // Opzione 1: Stretch per riempire tutto il contentSize
-        backgroundLayer.contentsGravity = .resize
-        
-        // Opzione 2: Mantieni aspect ratio, centra
-        // backgroundLayer.contentsGravity = .resizeAspect
-        
-        // Opzione 3: Riempi mantenendo aspect ratio (potrebbe tagliare)
-        // backgroundLayer.contentsGravity = .resizeAspectFill
-        
-        // Opzione 4: Ripeti l'immagine come pattern
-        // backgroundLayer.contentsGravity = .center
-        // backgroundLayer.contentsScale = 1.0
-        
-        backgroundLayer.frame = CGRect(origin: .zero, size: contentSize)
-        
-        CATransaction.commit()
-    }
-    
-    override var contentSize: CGSize {
-        didSet {
-            updateBackgroundSize()
-        }
-    }
-    
-    private func updateBackgroundSize() {
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        backgroundLayer.frame = CGRect(origin: .zero, size: contentSize)
-        CATransaction.commit()
-    }
-    
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        updateBackgroundSize()
-    }
-}
-*/
 class CustomPKCanvasView: PKCanvasView {
     var backgroundView : UIImageView?
-    
+    var onLayout: (() -> Void)?
     override func awakeFromNib() {
         super.awakeFromNib()
         //setupBackground()
@@ -93,6 +24,7 @@ class CustomPKCanvasView: PKCanvasView {
     required init?(coder: NSCoder) {
         super.init(coder: coder)
     }
+    
     
     func setupBackgroundImage(image:UIImage?) {
         backgroundView?.removeFromSuperview()
@@ -120,13 +52,17 @@ class CustomPKCanvasView: PKCanvasView {
         // Il background deve coprire tutto il contenuto
         if let backgroundView = self.backgroundView {
             backgroundView.frame = CGRect(origin: .zero, size: contentSize)
+            //backgroundView.transform = CGAffineTransform(scaleX: self.zoomScale, y: self.zoomScale)
+            
         }
     }
     
     override func layoutSubviews() {
         super.layoutSubviews()
         updateBackgroundSize()
-    
+        
+        onLayout?()
     }
+    
 }
 
